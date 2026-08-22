@@ -1309,6 +1309,48 @@ button.list-hero-stat {
   width: calc(100% - 32px);
 }
 
+.address-block {
+  padding: 14px 16px 0;
+}
+
+.address-block .label {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+}
+
+.address-block .address-value {
+  display: block;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.store-nav-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.map-callout-instagram {
+  display: inline-block;
+  margin-bottom: 10px;
+  padding-left: 10px;
+  font-size: 0.85rem;
+}
+
+.map-callout .store-nav-actions {
+  padding: 8px 0 0;
+  gap: 8px;
+}
+
+.map-callout .store-nav-actions .btn {
+  padding: 10px;
+  font-size: 0.9rem;
+}
+
 .card-row {
   display: flex;
   justify-content: space-between;

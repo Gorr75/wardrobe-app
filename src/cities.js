@@ -223,6 +223,23 @@ export const ALL_CITIES_MAP = {
   zoom: 4,
 };
 
+export const BRAND_INSTAGRAM = {
+  Hermès: 'hermes',
+  Omega: 'omega',
+  Chanel: 'chanel',
+};
+
+export function getStoreInstagramHandle(store) {
+  const handle = (store.instagram || BRAND_INSTAGRAM[store.brand] || '').trim();
+  if (!handle) return '';
+  return handle.replace(/^@/, '');
+}
+
+export function getStoreInstagramLabel(store) {
+  const handle = getStoreInstagramHandle(store);
+  return handle ? `@${handle}` : '';
+}
+
 export function getStoresForCity(cityId) {
   return STORES.filter((store) => store.cityId === cityId);
 }
