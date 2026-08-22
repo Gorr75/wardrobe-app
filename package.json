@@ -1,0 +1,15 @@
+{
+  "name": "wardrobe-app",
+  "private": true,
+  "version": "2.0.0",
+  "description": "Luxury boutique clienteling journal for Stockholm maisons",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^6.2.0"
+  }
+}
