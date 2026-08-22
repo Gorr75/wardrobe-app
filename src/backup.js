@@ -42,10 +42,12 @@ export function setAutoBackupMode(mode) {
 export function buildBackupPayload(data) {
   return {
     app: 'maison-journal',
-    version: 3,
+    version: 4,
     exportedAt: new Date().toISOString(),
     staff: data.staff,
     visits: data.visits,
+    storeMeta: data.storeMeta || {},
+    brandSizes: data.brandSizes || {},
   };
 }
 

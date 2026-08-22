@@ -1,8 +1,9 @@
+import { emptyBrandSizes, normalizeBrandSizes } from './brands.js';
 import { STORES, getStoreByBrand } from './cities.js';
 import { normalizeStaff } from './staff.js';
 
-const STORAGE_KEY = 'maison-journal-v4';
-const LEGACY_STORAGE_KEYS = ['maison-journal-v3', 'maison-journal-v2'];
+const STORAGE_KEY = 'maison-journal-v5';
+const LEGACY_STORAGE_KEYS = ['maison-journal-v4', 'maison-journal-v3', 'maison-journal-v2'];
 const CITY_KEY = 'maison-journal-city';
 const HOME_TAB_KEY = 'maison-journal-home-tab';
 
@@ -16,6 +17,19 @@ function normalizeVisit(visit) {
     at,
     note: visit.note || visit.notes || '',
   };
+}
+
+function normalizeStoreMeta(raw) {
+  if (!raw || typeof raw !== 'object') return {};
+  const meta = {};
+  for (const [storeId, value] of Object.entries(raw)) {
+    if (!value || typeof value !== 'object') continue;
+    meta[storeId] = {
+      image: value.image || '',
+      note: value.note || '',
+    };
+  }
+  return meta;
 }
 
 function entryToVisit(entry) {
@@ -76,26 +90,42 @@ function seedData() {
         note: 'Classic flap sizes compared.',
       }),
     ],
+    storeMeta: {},
+    brandSizes: {
+      Hermès: { shoes: '38', rtw: '38', belt: '85' },
+      Omega: { wrist: '19', case: '41' },
+      Chanel: {},
+    },
   };
 }
 
-function migrateLegacyParsed(parsed) {
-  if (Array.isArray(parsed.staff) && Array.isArray(parsed.visits)) {
-    return {
-      staff: parsed.staff.map(normalizeStaff),
-      visits: parsed.visits.map(normalizeVisit),
-    };
-  }
+function normalizeDataModel(parsed) {
+  if (!parsed || typeof parsed !== 'object') return null;
+
+  let staff = [];
+  let visits = [];
+
+  if (Array.isArray(parsed.staff)) staff = parsed.staff.map(normalizeStaff);
+  if (Array.isArray(parsed.visits)) visits = parsed.visits.map(normalizeVisit);
 
   const entries = parsed.entries ?? parsed.journal;
-  if (Array.isArray(entries)) {
-    return {
-      staff: Array.isArray(parsed.staff) ? parsed.staff.map(normalizeStaff) : [],
-      visits: entries.map(entryToVisit).filter(Boolean),
-    };
+  if (!visits.length && Array.isArray(entries)) {
+    visits = entries.map(entryToVisit).filter(Boolean);
+    if (!staff.length && Array.isArray(parsed.staff)) {
+      staff = parsed.staff.map(normalizeStaff);
+    }
   }
 
-  return null;
+  if (!Array.isArray(parsed.staff) && !Array.isArray(parsed.visits) && !Array.isArray(entries)) {
+    return null;
+  }
+
+  return {
+    staff,
+    visits,
+    storeMeta: normalizeStoreMeta(parsed.storeMeta),
+    brandSizes: normalizeBrandSizes(parsed.brandSizes),
+  };
 }
 
 export function defaultData() {
@@ -123,19 +153,14 @@ export function loadData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed.staff) && Array.isArray(parsed.visits)) {
-        return {
-          staff: parsed.staff.map(normalizeStaff),
-          visits: parsed.visits.map(normalizeVisit),
-        };
-      }
+      const normalized = normalizeDataModel(JSON.parse(raw));
+      if (normalized) return normalized;
     }
 
     for (const legacyKey of LEGACY_STORAGE_KEYS) {
       const legacyRaw = localStorage.getItem(legacyKey);
       if (!legacyRaw) continue;
-      const migrated = migrateLegacyParsed(JSON.parse(legacyRaw));
+      const migrated = normalizeDataModel(JSON.parse(legacyRaw));
       if (migrated) {
         saveData(migrated);
         return migrated;
@@ -153,6 +178,8 @@ export function saveData(data) {
     JSON.stringify({
       staff: data.staff,
       visits: data.visits,
+      storeMeta: data.storeMeta || {},
+      brandSizes: data.brandSizes || emptyBrandSizes(),
     }),
   );
 }
@@ -161,14 +188,20 @@ export function createId(prefix) {
   return `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
 }
 
-export function filterByCityStores(stores, cityId) {
-  return stores.filter((store) => store.cityId === cityId);
+export function getStoreMeta(data, storeId) {
+  return data.storeMeta?.[storeId] || { image: '', note: '' };
+}
+
+export function setStoreMeta(data, storeId, patch) {
+  if (!data.storeMeta) data.storeMeta = {};
+  data.storeMeta[storeId] = {
+    ...getStoreMeta(data, storeId),
+    ...patch,
+  };
 }
 
 export function getVisitsForStore(visits, storeId) {
-  return visits
-    .filter((visit) => visit.storeId === storeId)
-    .sort((a, b) => b.at - a.at);
+  return visits.filter((visit) => visit.storeId === storeId).sort((a, b) => b.at - a.at);
 }
 
 export function getLastVisitAt(visits, storeId) {
@@ -181,7 +214,7 @@ export function resetToSeed() {
 }
 
 export function normalizeImportedData(parsed) {
-  const migrated = migrateLegacyParsed(parsed);
+  const migrated = normalizeDataModel(parsed);
   if (!migrated) throw new Error('Invalid backup format');
   return migrated;
 }

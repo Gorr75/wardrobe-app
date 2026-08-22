@@ -1,3 +1,4 @@
+import { imageTagMarkup } from './photos.js';
 import { escapeHtml } from './frame.js';
 
 export const ROLE_PRESETS = [
@@ -71,7 +72,7 @@ export function getInitials(name) {
 
 export function renderStaffAvatar(member) {
   if (member.image) {
-    return `<img class="staff-avatar" src="${escapeHtml(member.image)}" alt="" />`;
+    return imageTagMarkup('staff-avatar contact-photo', member.image);
   }
   return `<div class="staff-avatar staff-avatar-initials" aria-hidden="true">${escapeHtml(getInitials(member.name))}</div>`;
 }

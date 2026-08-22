@@ -1,3 +1,5 @@
+import { escapeHtml } from './frame.js';
+
 let mapInstance = null;
 let storeMarkers = [];
 
@@ -22,6 +24,18 @@ export function uberUrl(store) {
   url += `&dropoff[formatted_address]=${encodeURIComponent(store.address)}`;
   url += `&dropoff[latitude]=${store.lat}&dropoff[longitude]=${store.lng}`;
   return url;
+}
+
+function openNavigation(url) {
+  window.location.href = url;
+}
+
+export function openAppleMaps(store) {
+  openNavigation(appleMapsUrl(store));
+}
+
+export function openUber(store) {
+  openNavigation(uberUrl(store));
 }
 
 function createMapIcon(color) {
@@ -84,15 +98,15 @@ export function initStoreMap(stores, city, onOpenStore) {
       <div class="map-callout-address">${escapeHtml(store.address)}</div>
       <div class="map-callout-status"><span class="map-legend-dot" style="background:${BRAND_COLORS[store.brand]}"></span> ${escapeHtml(store.brand)}</div>
       <button type="button" class="btn btn-primary full-width map-details-btn">View boutique</button>
-      <a class="map-maps-link" href="${escapeHtml(appleMapsUrl(store))}" target="_blank" rel="noopener noreferrer">Open in Apple Maps</a>
+      <button type="button" class="btn btn-secondary full-width map-directions-btn">Get directions</button>
     `;
     popup.querySelector('.map-details-btn')?.addEventListener('click', () => {
       mapInstance?.closePopup();
       onOpenStore?.(store.id);
     });
-    popup.querySelector('.map-maps-link')?.addEventListener('click', (e) => {
-      e.preventDefault();
-      window.location.href = appleMapsUrl(store);
+    popup.querySelector('.map-directions-btn')?.addEventListener('click', () => {
+      mapInstance?.closePopup();
+      showNavigationPicker(store);
     });
     marker.bindPopup(popup, {
       className: 'map-popup',
@@ -153,23 +167,32 @@ export function showNavigationPicker(store) {
       </div>
     </div>
   `;
-  overlay.querySelector('#open-maps')?.addEventListener('click', () => {
-    window.location.href = appleMapsUrl(store);
-  });
-  overlay.querySelector('#open-uber')?.addEventListener('click', () => {
-    window.location.href = uberUrl(store);
-  });
-  overlay.querySelector('#nav-cancel')?.addEventListener('click', () => overlay.remove());
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) overlay.remove();
-  });
-  document.body.appendChild(overlay);
-}
 
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text ?? '';
-  return div.innerHTML;
+  const modal = overlay.querySelector('.modal');
+  const uberBtn = overlay.querySelector('#open-uber');
+  const close = () => {
+    overlay.remove();
+    document.body.style.overflow = '';
+  };
+
+  document.body.style.overflow = 'hidden';
+  document.body.appendChild(overlay);
+  modal.addEventListener('click', (e) => e.stopPropagation());
+
+  overlay.querySelector('#open-maps')?.addEventListener('click', () => {
+    openAppleMaps(store);
+    close();
+  });
+
+  uberBtn?.addEventListener('click', () => {
+    openUber(store);
+    close();
+  });
+
+  overlay.querySelector('#nav-cancel')?.addEventListener('click', close);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) close();
+  });
 }
 
 export function mapLegendMarkup() {

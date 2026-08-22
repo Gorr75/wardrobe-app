@@ -50,3 +50,44 @@
   margin-top: 4px;
   font-size: 0.9rem;
 }
+
+.section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.section-header-row .section-title {
+  margin-bottom: 0;
+}
+
+.brand-size-summary {
+  padding: 14px 16px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+
+.size-brand-hint {
+  padding: 10px 16px 0;
+  margin: 0;
+}
+
+.restaurant-card .restaurant-photo {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.detail-photo.restaurant-photo {
+  width: 96px;
+  height: 96px;
+  border-radius: 22px;
+  object-fit: cover;
+  margin: 0 auto 12px;
+  display: block;
+}
