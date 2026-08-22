@@ -218,8 +218,20 @@ export function getCity(cityId) {
   return CITIES.find((city) => city.id === cityId) ?? CITIES[0];
 }
 
-export function getStoresForCity(cityId) {
-  return STORES.filter((store) => store.cityId === cityId);
+export const ALL_CITIES_MAP = {
+  center: { lat: 52.2, lng: 12.5 },
+  zoom: 4,
+};
+
+export function getStoresForFilter(cityId) {
+  if (!cityId) {
+    return [...STORES].sort((a, b) => {
+      const cityCmp = getCity(a.cityId).name.localeCompare(getCity(b.cityId).name);
+      if (cityCmp !== 0) return cityCmp;
+      return a.name.localeCompare(b.name);
+    });
+  }
+  return getStoresForCity(cityId);
 }
 
 export function getStoreByBrand(cityId, brand) {

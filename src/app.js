@@ -1,4 +1,4 @@
-import { CITIES, getCity, getStoresForCity, STORES } from './cities.js';
+import { ALL_CITIES_MAP, CITIES, getCity, getStoresForFilter, STORES } from './cities.js';
 import {
   bindChromeAutoHide,
   brandIconClass,
@@ -22,6 +22,7 @@ import {
 } from './maps.js';
 import {
   APP_VERSION,
+  appVersionLabel,
   BACKUP_REMINDER_DAYS,
   checkWeeklyAutoBackup,
   dismissBackupReminder,
@@ -87,7 +88,15 @@ function byId(list, id) {
 }
 
 function cityStores() {
-  return getStoresForCity(state.cityId);
+  return getStoresForFilter(state.cityId);
+}
+
+function mapViewCity() {
+  return state.cityId ? getCity(state.cityId) : ALL_CITIES_MAP;
+}
+
+function showingAllCities() {
+  return !state.cityId;
 }
 
 function statsForCity() {
@@ -212,7 +221,7 @@ async function renderList() {
   });
 
   if (isMapMode) {
-    initStoreMap(stores, getCity(state.cityId), (storeId) => {
+    initStoreMap(stores, mapViewCity(), (storeId) => {
       state.route = { view: 'store', id: storeId };
       render();
     });
@@ -226,13 +235,8 @@ async function renderList() {
     refreshListBody();
   });
 
-  app.querySelector('#city-filter')?.addEventListener('change', (e) => {
-    state.cityId = e.target.value;
-    saveSelectedCity(state.cityId);
-    render();
-  });
-
   bindListBodyEvents();
+  bindCityFilterEvents();
   if (!isMapMode) bindChromeAutoHide(app);
 
   if (shouldShowBackupReminder()) {
@@ -241,8 +245,12 @@ async function renderList() {
 }
 
 function buildListBody({ stores, query, isStaffMode, isMapMode }) {
+  const cityFilter = cityFilterMarkup(CITIES, state.cityId);
+  const allCities = showingAllCities();
+
   if (isMapMode) {
     return `
+      ${cityFilter}
       ${mapLegendMarkup()}
       <div class="map-panel">
         <p id="map-status" class="map-status" hidden></p>
@@ -271,6 +279,7 @@ function buildListBody({ stores, query, isStaffMode, isMapMode }) {
     const usedRoles = collectUsedRoles(allStaffEntries);
 
     const staffControlsHtml = `
+      ${cityFilter}
       <div class="sort-row">
         <span class="sort-label">Sort</span>
         <div class="sort-options">
@@ -326,7 +335,7 @@ function buildListBody({ stores, query, isStaffMode, isMapMode }) {
                   <div class="subtitle">
                     <span class="role-badge ${getRoleBadgeClass(member.role)}">${escapeHtml(member.role)}</span>
                     <span class="subtitle-sep">·</span>
-                    <button type="button" class="staff-restaurant-link" data-store-id="${member.storeId}">${escapeHtml(member.store.name)}</button>
+                    <button type="button" class="staff-restaurant-link" data-store-id="${member.storeId}">${escapeHtml(member.store.name)}${allCities ? ` · ${escapeHtml(getCity(member.store.cityId).name)}` : ''}</button>
                   </div>
                 </div>
                 ${
@@ -344,8 +353,7 @@ function buildListBody({ stores, query, isStaffMode, isMapMode }) {
       <p class="swipe-hint">Swipe left on staff to delete</p>`;
   }
 
-  const cityFilter = cityFilterMarkup(CITIES, state.cityId);
-  const filtered = stores.filter((s) => matchesSearch(`${s.name} ${s.brand} ${s.address}`, query));
+  const filtered = stores.filter((s) => matchesSearch(`${s.name} ${s.brand} ${s.address} ${getCity(s.cityId).name}`, query));
 
   if (!filtered.length) {
     return `${cityFilter}<div class="empty-state"><div class="icon">🏛️</div><h2>No maisons</h2><p>Try another city or search.</p></div>`;
@@ -372,7 +380,7 @@ function buildListBody({ stores, query, isStaffMode, isMapMode }) {
             ${thumb}
             <div class="info">
               <div class="title">${escapeHtml(store.name)}</div>
-              <div class="subtitle">${escapeHtml(store.brand)} · ${escapeHtml(store.address.split(',')[0])}</div>
+              <div class="subtitle">${escapeHtml(store.brand)} · ${allCities ? escapeHtml(getCity(store.cityId).name) : escapeHtml(store.address.split(',')[0])}</div>
               <div class="staff-item note">${escapeHtml(formatRelativeVisit(lastVisit))}${staffCount ? ` · ${staffCount} staff` : ''}</div>
             </div>
             <span class="chevron">›</span>
@@ -473,6 +481,19 @@ function bindSwipeRow(row, { onTap, onDelete }) {
   });
 }
 
+function bindCityFilterEvents() {
+  app.querySelector('#city-filter')?.addEventListener('change', (e) => {
+    state.cityId = e.target.value;
+    saveSelectedCity(state.cityId);
+    render();
+  });
+  app.querySelector('#clear-city-filter')?.addEventListener('click', () => {
+    state.cityId = '';
+    saveSelectedCity('');
+    render();
+  });
+}
+
 function refreshListBody() {
   const body = app.querySelector('#list-body');
   if (!body || state.homeTab === 'map') return;
@@ -483,6 +504,7 @@ function refreshListBody() {
     isMapMode: false,
   });
   bindListBodyEvents();
+  bindCityFilterEvents();
 }
 
 function bindListBodyEvents() {
@@ -866,8 +888,11 @@ function renderStaffForm(storeId, editStaffId) {
     return;
   }
 
-  let selectedStoreId = member?.storeId || storeId || state.cityId;
-  const storeMatch = stores.find((s) => s.id === selectedStoreId) || stores.find((s) => s.cityId === state.cityId) || stores[0];
+  let selectedStoreId = member?.storeId || storeId;
+  const storeMatch =
+    stores.find((s) => s.id === selectedStoreId) ||
+    (state.cityId ? stores.find((s) => s.cityId === state.cityId) : null) ||
+    stores[0];
   selectedStoreId = storeMatch.id;
 
   app.className = '';
@@ -1092,9 +1117,18 @@ function renderSettingsView() {
   app.innerHTML = `
     <header class="header">
       <button class="back-btn" id="back-btn" type="button" aria-label="Back">‹</button>
-      <h1>Settings <span class="version-badge">${APP_VERSION}</span></h1>
+      <h1>Settings</h1>
     </header>
     <main class="content">
+      <div class="section settings-section">
+        <div class="section-title">About</div>
+        <div class="card settings-card">
+          <div class="card-row">
+            <span class="label">Maison Journal</span>
+            <span class="value">${escapeHtml(appVersionLabel())}</span>
+          </div>
+        </div>
+      </div>
       <div class="section settings-section">
         <div class="section-title">Backup</div>
         <div class="card settings-card">
