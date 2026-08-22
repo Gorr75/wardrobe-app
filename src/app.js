@@ -210,11 +210,11 @@ async function renderList() {
   app.innerHTML = `
     <header class="header header-home">
       <div class="header-home-top">
-        <h1><span class="app-title-name">Maison Journal</span></h1>
+        <h1><span class="app-title-name">Boutique Journal</span></h1>
         ${headerActionsMarkup({
           showAdd: isStaffMode || isStoresMode,
-          addLabel: isStaffMode ? 'Add staff' : 'Add maison',
-          addAria: isStaffMode ? 'Add staff member' : 'Add maison',
+          addLabel: isStaffMode ? 'Add staff' : 'Add boutique',
+          addAria: isStaffMode ? 'Add staff member' : 'Add boutique',
         })}
       </div>
       ${listHeroMarkup(stats)}
@@ -225,7 +225,7 @@ async function renderList() {
         !isMapMode
           ? `
       <div class="search-box">
-        <input id="search-input" type="search" placeholder="${escapeHtml(isStaffMode ? 'Search staff…' : 'Search maisons…')}" value="${escapeHtml(state.listSearch)}" enterkeyhint="search" />
+        <input id="search-input" type="search" placeholder="${escapeHtml(isStaffMode ? 'Search staff…' : 'Search boutiques…')}" value="${escapeHtml(state.listSearch)}" enterkeyhint="search" />
       </div>`
           : ''
       }
@@ -324,7 +324,7 @@ function buildListBody({ stores, query, isStaffMode, isMapMode }) {
         <span class="sort-label">Sort</span>
         <div class="sort-options">
           <button type="button" class="sort-chip ${staffSort === 'name' ? 'selected' : ''}" data-staff-sort="name">Name</button>
-          <button type="button" class="sort-chip ${staffSort === 'store' ? 'selected' : ''}" data-staff-sort="store">Maison</button>
+          <button type="button" class="sort-chip ${staffSort === 'store' ? 'selected' : ''}" data-staff-sort="store">Boutique</button>
           <button type="button" class="sort-chip ${staffSort === 'role' ? 'selected' : ''}" data-staff-sort="role">Role</button>
         </div>
       </div>
@@ -355,7 +355,7 @@ function buildListBody({ stores, query, isStaffMode, isMapMode }) {
         <div class="empty-state">
           <div class="icon">👤</div>
           <h2>${allStaffEntries.length === 0 ? 'No staff yet' : 'No staff found'}</h2>
-          <p>${allStaffEntries.length === 0 ? 'Tap + to add your first contact at a maison.' : 'Try another search.'}</p>
+          <p>${allStaffEntries.length === 0 ? 'Tap + to add your first contact at a boutique.' : 'Try another search.'}</p>
         </div>`;
     }
 
@@ -396,13 +396,13 @@ function buildListBody({ stores, query, isStaffMode, isMapMode }) {
   const filtered = stores.filter((s) => matchesSearch(`${s.name} ${s.brand} ${s.address} ${getCity(s.cityId).name}`, query));
 
   if (!filtered.length) {
-    return `${cityFilter}<div class="empty-state"><div class="icon">🏛️</div><h2>No maisons</h2><p>Try another city or search.</p></div>`;
+    return `${cityFilter}<div class="empty-state"><div class="icon">🏛️</div><h2>No boutiques</h2><p>Try another city or search.</p></div>`;
   }
 
   return `
     ${cityFilter}
     <div class="list-section-header">
-      <span class="sort-label list-section-label">Maisons</span>
+      <span class="sort-label list-section-label">Boutiques</span>
       <span class="list-section-count">${filtered.length}</span>
     </div>
     <ul class="list">
@@ -687,7 +687,7 @@ function renderStoreDetail(storeId) {
           </div>`
           }
         </div>
-        <button class="btn btn-primary full-width" id="edit-store-btn" type="button">${isCustomStore(store) ? 'Edit maison' : 'Edit photo & note'}</button>
+        <button class="btn btn-primary full-width" id="edit-store-btn" type="button">${isCustomStore(store) ? 'Edit boutique' : 'Edit photo & note'}</button>
       </div>
 
       ${
@@ -880,7 +880,7 @@ function renderStoreEdit(storeId) {
   app.innerHTML = `
     <header class="header">
       <button class="back-btn" id="cancel-btn" type="button" aria-label="Back">‹</button>
-      <h1>Edit maison</h1>
+      <h1>Edit boutique</h1>
     </header>
     <main class="content">
       <form class="form" id="store-form">
@@ -888,7 +888,7 @@ function renderStoreEdit(storeId) {
           <label>Photo</label>
           ${photoPickerMarkup({
             previewImage: meta.image,
-            placeholder: 'Add maison photo',
+            placeholder: 'Add boutique photo',
             placeholderClass: 'staff-photo-preview',
           })}
         </div>
@@ -907,7 +907,7 @@ function renderStoreEdit(storeId) {
   const formRoot = app.querySelector('#store-form');
   const photoPicker = bindPhotoPicker(formRoot, {
     initialImage: meta.image,
-    placeholder: 'Add maison photo',
+    placeholder: 'Add boutique photo',
   });
 
   const cancel = () => {
@@ -951,7 +951,7 @@ function renderCustomStoreForm(storeId = null) {
   app.innerHTML = `
     <header class="header">
       <button class="back-btn" id="cancel-btn" type="button" aria-label="Back">‹</button>
-      <h1>${isEdit ? 'Edit maison' : 'New maison'}</h1>
+      <h1>${isEdit ? 'Edit boutique' : 'New boutique'}</h1>
     </header>
     <main class="content">
       <form class="form" id="custom-store-form">
@@ -959,7 +959,7 @@ function renderCustomStoreForm(storeId = null) {
           <label>Photo</label>
           ${photoPickerMarkup({
             previewImage: meta.image,
-            placeholder: 'Add maison photo',
+            placeholder: 'Add boutique photo',
             placeholderClass: 'staff-photo-preview',
           })}
         </div>
@@ -1000,7 +1000,7 @@ function renderCustomStoreForm(storeId = null) {
           <textarea id="store-note" placeholder="Your notes about this boutique">${escapeHtml(meta.note || '')}</textarea>
         </div>
         <div class="form-actions">
-          ${isEdit ? `<button type="button" class="btn btn-delete" id="delete-store-btn">Delete maison</button>` : ''}
+          ${isEdit ? `<button type="button" class="btn btn-delete" id="delete-store-btn">Delete boutique</button>` : ''}
           <button type="button" class="btn btn-secondary" id="cancel-form">Cancel</button>
           <button type="submit" class="btn btn-primary" id="save-store-btn">Save</button>
         </div>
@@ -1014,7 +1014,7 @@ function renderCustomStoreForm(storeId = null) {
   const saveBtn = app.querySelector('#save-store-btn');
   const photoPicker = bindPhotoPicker(formRoot, {
     initialImage: meta.image,
-    placeholder: 'Add maison photo',
+    placeholder: 'Add boutique photo',
   });
 
   function updateBrandField() {
@@ -1036,8 +1036,8 @@ function renderCustomStoreForm(storeId = null) {
 
   app.querySelector('#delete-store-btn')?.addEventListener('click', () => {
     confirmAction(
-      'Delete maison?',
-      'This removes the maison and all linked staff, visits, and purchases.',
+      'Delete boutique?',
+      'This removes the boutique and all linked staff, visits, and purchases.',
       async () => {
         deleteCustomStore(state.data, storeId);
         saveData(state.data);
@@ -1343,7 +1343,7 @@ function renderStaffForm(storeId, editStaffId) {
 
   if (!stores.length) {
     app.className = '';
-    app.innerHTML = `<main class="content"><div class="empty-state"><h2>No maisons</h2></div></main>`;
+    app.innerHTML = `<main class="content"><div class="empty-state"><h2>No boutiques</h2></div></main>`;
     return;
   }
 
@@ -1371,7 +1371,7 @@ function renderStaffForm(storeId, editStaffId) {
           })}
         </div>
         <div class="field">
-          <label for="staff-store">Maison</label>
+          <label for="staff-store">Boutique</label>
           <select id="staff-store" class="field-select" required>
             ${stores
               .map((store) => {
@@ -1380,7 +1380,7 @@ function renderStaffForm(storeId, editStaffId) {
               })
               .join('')}
           </select>
-          <p class="field-hint">${isEdit ? 'Change if they moved to another boutique.' : 'Pick which maison they work at.'}</p>
+          <p class="field-hint">${isEdit ? 'Change if they moved to another boutique.' : 'Pick which boutique they work at.'}</p>
         </div>
         <div class="field">
           <label for="name">Name</label>
@@ -1584,7 +1584,7 @@ function renderSettingsView() {
         <div class="section-title">About</div>
         <div class="card settings-card">
           <div class="card-row">
-            <span class="label">Maison Journal</span>
+            <span class="label">Boutique Journal</span>
             <span class="value">${escapeHtml(appVersionLabel())}</span>
           </div>
         </div>
@@ -1592,7 +1592,7 @@ function renderSettingsView() {
       <div class="section settings-section">
         <div class="section-title">Display</div>
         <div class="card settings-card">
-          <p class="data-hint">Show the top stats bar (Visited, Staff, Visits, Maisons) and quick shortcuts to visited maisons on the Maisons tab. Hide to save space.</p>
+          <p class="data-hint">Show the top stats bar (Visited, Staff, Visits, Boutiques) and quick shortcuts to visited boutiques on the Boutiques tab. Hide to save space.</p>
           <div class="sort-options settings-toggle-row">
             <button type="button" class="sort-chip ${showVisitedMenu ? 'selected' : ''}" data-visited-menu="1">Show</button>
             <button type="button" class="sort-chip ${!showVisitedMenu ? 'selected' : ''}" data-visited-menu="0">Hide</button>
@@ -1603,7 +1603,7 @@ function renderSettingsView() {
         <div class="section-title">Backup</div>
         <div class="card settings-card">
           <p class="data-hint backup-last-hint">${escapeHtml(getLastExportLabel())}</p>
-          <p class="data-hint">Export staff, visits, purchases, custom maisons, photos/notes, and your brand sizes. To restore, use Import from file below.</p>
+          <p class="data-hint">Export staff, visits, purchases, custom boutiques, photos/notes, and your brand sizes. To restore, use Import from file below.</p>
           <button class="btn btn-secondary full-width" id="export-btn" type="button">Export to file</button>
           <label class="btn btn-secondary full-width import-label">
             Import from file
@@ -1616,14 +1616,14 @@ function renderSettingsView() {
               <button type="button" class="sort-chip ${autoBackupMode === 'weekly' ? 'selected' : ''}" data-auto-backup="weekly">Weekly</button>
               <button type="button" class="sort-chip ${autoBackupMode === 'visit' ? 'selected' : ''}" data-auto-backup="visit">On visit</button>
             </div>
-            <p class="data-hint auto-backup-hint">Weekly saves once per week. On visit saves when you log a maison visit. Backups download to your device.</p>
+            <p class="data-hint auto-backup-hint">Weekly saves once per week. On visit saves when you log a boutique visit. Backups download to your device.</p>
           </div>
         </div>
       </div>
       <div class="section">
         <div class="section-title">Sample data</div>
         <div class="card settings-card">
-          <p class="data-hint">Replace all staff, visits, purchases, custom maisons, and demo sizes with built-in sample data.</p>
+          <p class="data-hint">Replace all staff, visits, purchases, custom boutiques, and demo sizes with built-in sample data.</p>
           <button class="btn btn-delete full-width" id="reset-btn" type="button">Reset sample data</button>
         </div>
       </div>
@@ -1667,7 +1667,7 @@ function renderSettingsView() {
           state.route = { view: 'list' };
           render();
         } catch (err) {
-          alert('Could not import that file. Check that it is a valid Maison Journal backup.');
+          alert('Could not import that file. Check that it is a valid Boutique Journal backup.');
           console.error(err);
         }
       },

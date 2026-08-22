@@ -52,7 +52,7 @@ export function bindChromeAutoHide(app) {
 
 export function homeTabsMarkup(homeTab) {
   const tabs = [
-    { id: 'stores', label: 'Maisons', icon: '🏛️' },
+    { id: 'stores', label: 'Boutiques', icon: '🏛️' },
     { id: 'staff', label: 'Staff', icon: '👤' },
     { id: 'map', label: 'Map', icon: '🗺️' },
   ];
@@ -74,7 +74,7 @@ export function homeTabsMarkup(homeTab) {
 export function visitedStoresMenuMarkup(stores) {
   if (!stores.length) return '';
   return `
-    <div class="visited-stores-menu" aria-label="Visited maisons">
+    <div class="visited-stores-menu" aria-label="Visited boutiques">
       <div class="visited-stores-scroll">
         ${stores
           .map(
@@ -105,7 +105,7 @@ export function listHeroMarkup(stats) {
         </div>
         <div class="list-hero-stat">
           <span class="list-hero-value">${stats.stores}</span>
-          <span class="list-hero-unit">Maisons</span>
+          <span class="list-hero-unit">Boutiques</span>
         </div>
       </div>
     </div>`;

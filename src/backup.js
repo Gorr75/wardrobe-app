@@ -7,7 +7,7 @@ const AUTO_BACKUP_KEY = 'maison-journal-auto-backup';
 const FIRST_USE_KEY = 'maison-journal-first-use';
 
 export const APP_VERSION = '0.1';
-export const APP_BUILD = 15;
+export const APP_BUILD = 16;
 export const BACKUP_REMINDER_DAYS = 30;
 
 export function appVersionLabel() {
@@ -63,7 +63,7 @@ export function buildBackupPayload(data) {
 export async function exportAllData(data, { silent = false, auto = false } = {}) {
   const payload = buildBackupPayload(data);
   const jsonText = JSON.stringify(payload, null, 2);
-  const fileName = `maison-journal-backup-${todayDateString()}.json`;
+  const fileName = `boutique-journal-backup-${todayDateString()}.json`;
 
   try {
     const blob = new Blob([jsonText], { type: 'application/json' });
