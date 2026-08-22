@@ -133,11 +133,14 @@ export function defaultData() {
 }
 
 export function loadSelectedCity() {
-  return localStorage.getItem(CITY_KEY) ?? DEFAULT_CITY_ID;
+  const value = localStorage.getItem(CITY_KEY);
+  if (value === null) return '';
+  return value;
 }
 
 export function saveSelectedCity(cityId) {
-  localStorage.setItem(CITY_KEY, cityId);
+  if (cityId) localStorage.setItem(CITY_KEY, cityId);
+  else localStorage.setItem(CITY_KEY, '');
 }
 
 export function loadHomeTab() {

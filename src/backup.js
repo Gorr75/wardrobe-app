@@ -6,8 +6,13 @@ const BACKUP_REMINDER_DISMISSED_KEY = 'maison-journal-backup-dismissed';
 const AUTO_BACKUP_KEY = 'maison-journal-auto-backup';
 const FIRST_USE_KEY = 'maison-journal-first-use';
 
-export const APP_VERSION = '0.1.0';
+export const APP_VERSION = '0.1';
+export const APP_BUILD = 10;
 export const BACKUP_REMINDER_DAYS = 30;
+
+export function appVersionLabel() {
+  return `Version ${APP_VERSION} build ${APP_BUILD}`;
+}
 
 let weeklyAutoExportDoneThisSession = false;
 
@@ -43,6 +48,8 @@ export function buildBackupPayload(data) {
   return {
     app: 'maison-journal',
     version: 4,
+    appVersion: APP_VERSION,
+    appBuild: APP_BUILD,
     exportedAt: new Date().toISOString(),
     staff: data.staff,
     visits: data.visits,

@@ -122,6 +122,7 @@ export function cityFilterMarkup(cities, selectedCityId) {
     <div class="city-filter-row">
       <label class="sort-label" for="city-filter">City</label>
       <select id="city-filter" class="city-filter-select" aria-label="Filter by city">
+        <option value="" ${selectedCityId === '' ? 'selected' : ''}>All cities</option>
         ${cities
           .map(
             (city) =>
@@ -129,6 +130,7 @@ export function cityFilterMarkup(cities, selectedCityId) {
           )
           .join('')}
       </select>
+      ${selectedCityId ? `<button type="button" class="btn-text tag-clear-btn" id="clear-city-filter">All cities</button>` : ''}
     </div>`;
 }
 
