@@ -72,6 +72,9 @@ function escapeAttr(value) {
 }
 
 function render() {
+  const prevScroller = document.getElementById('sheet-scroll');
+  const scrollTop = prevScroller?.scrollTop ?? 0;
+
   const { city, stores, creators, staff, entries } = cityData();
   const upcoming = entries
     .filter((entry) => entry.followUpDate && new Date(entry.followUpDate) >= new Date())
@@ -129,6 +132,8 @@ function render() {
 
   bindEvents();
   mountMap(city, stores);
+  const scroller = document.getElementById('sheet-scroll');
+  if (scroller && scrollTop) scroller.scrollTop = scrollTop;
 }
 
 function renderStores(stores) {
