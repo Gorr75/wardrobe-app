@@ -1,0 +1,231 @@
+export const CITIES = [
+  {
+    id: 'stockholm',
+    name: 'Stockholm',
+    country: 'Sweden',
+    center: { lat: 59.3346, lng: 18.071 },
+    zoom: 14,
+    neighborhoods: ['Östermalm', 'Norrmalm', 'Vasastan', 'Djurgården', 'Södermalm', 'Kungsholmen'],
+  },
+  {
+    id: 'copenhagen',
+    name: 'Copenhagen',
+    country: 'Denmark',
+    center: { lat: 55.6794, lng: 12.5797 },
+    zoom: 14,
+    neighborhoods: ['Indre By', 'Frederiksstaden', 'Vesterbro', 'Østerbro', 'Nørrebro'],
+  },
+  {
+    id: 'london',
+    name: 'London',
+    country: 'United Kingdom',
+    center: { lat: 51.5115, lng: -0.1455 },
+    zoom: 14,
+    neighborhoods: ['Mayfair', 'Soho', 'Knightsbridge', 'Chelsea', 'Belgravia'],
+  },
+  {
+    id: 'paris',
+    name: 'Paris',
+    country: 'France',
+    center: { lat: 48.8682, lng: 2.3145 },
+    zoom: 14,
+    neighborhoods: ['1er', '8e', '16e', '7e', 'Saint-Germain'],
+  },
+  {
+    id: 'dubai',
+    name: 'Dubai',
+    country: 'UAE',
+    center: { lat: 25.1576, lng: 55.2401 },
+    zoom: 12,
+    neighborhoods: ['Downtown', 'DIFC', 'Jumeirah', 'Dubai Marina', 'City Walk'],
+  },
+  {
+    id: 'oslo',
+    name: 'Oslo',
+    country: 'Norway',
+    center: { lat: 59.913, lng: 10.742 },
+    zoom: 14,
+    neighborhoods: ['Sentrum', 'Frogner', 'Majorstuen', 'Aker Brygge', 'Grünerløkka'],
+  },
+];
+
+export const STORES = [
+  {
+    id: 'stockholm-hermes',
+    cityId: 'stockholm',
+    brand: 'Hermès',
+    name: 'Hermès Stockholm',
+    address: 'Birger Jarlsgatan 27, 114 34 Stockholm',
+    lat: 59.3369,
+    lng: 18.0736,
+  },
+  {
+    id: 'stockholm-omega',
+    cityId: 'stockholm',
+    brand: 'Omega',
+    name: 'Omega Stockholm',
+    address: 'Biblioteksgatan 5, 114 46 Stockholm',
+    lat: 59.3347,
+    lng: 18.0734,
+  },
+  {
+    id: 'stockholm-chanel',
+    cityId: 'stockholm',
+    brand: 'Chanel',
+    name: 'Chanel Stockholm',
+    address: 'Hamngatan 31, 111 47 Stockholm',
+    lat: 59.3334,
+    lng: 18.0686,
+  },
+  {
+    id: 'copenhagen-hermes',
+    cityId: 'copenhagen',
+    brand: 'Hermès',
+    name: 'Hermès Copenhagen',
+    address: 'Amagertorv 10, 1160 København',
+    lat: 55.6784,
+    lng: 12.5725,
+  },
+  {
+    id: 'copenhagen-omega',
+    cityId: 'copenhagen',
+    brand: 'Omega',
+    name: 'Omega Copenhagen',
+    address: 'Østergade 26, 1100 København',
+    lat: 55.6789,
+    lng: 12.5833,
+  },
+  {
+    id: 'copenhagen-chanel',
+    cityId: 'copenhagen',
+    brand: 'Chanel',
+    name: 'Chanel Copenhagen',
+    address: 'Store Kongensgade 40, 1264 København',
+    lat: 55.6842,
+    lng: 12.5889,
+  },
+  {
+    id: 'london-hermes',
+    cityId: 'london',
+    brand: 'Hermès',
+    name: 'Hermès London',
+    address: '155 New Bond Street, London W1S 2UY',
+    lat: 51.5142,
+    lng: -0.1495,
+  },
+  {
+    id: 'london-omega',
+    cityId: 'london',
+    brand: 'Omega',
+    name: 'Omega London',
+    address: '28 Old Bond Street, London W1S 4SD',
+    lat: 51.5089,
+    lng: -0.1419,
+  },
+  {
+    id: 'london-chanel',
+    cityId: 'london',
+    brand: 'Chanel',
+    name: 'Chanel London',
+    address: '158-159 New Bond Street, London W1S 2UF',
+    lat: 51.514,
+    lng: -0.149,
+  },
+  {
+    id: 'paris-hermes',
+    cityId: 'paris',
+    brand: 'Hermès',
+    name: 'Hermès Paris',
+    address: '17 Rue du Faubourg Saint-Honoré, 75008 Paris',
+    lat: 48.8689,
+    lng: 2.3212,
+  },
+  {
+    id: 'paris-omega',
+    cityId: 'paris',
+    brand: 'Omega',
+    name: 'Omega Paris',
+    address: '52 Rue François 1er, 75008 Paris',
+    lat: 48.868,
+    lng: 2.3045,
+  },
+  {
+    id: 'paris-chanel',
+    cityId: 'paris',
+    brand: 'Chanel',
+    name: 'Chanel Paris',
+    address: '31 Rue Cambon, 75001 Paris',
+    lat: 48.8676,
+    lng: 2.327,
+  },
+  {
+    id: 'dubai-hermes',
+    cityId: 'dubai',
+    brand: 'Hermès',
+    name: 'Hermès Dubai',
+    address: 'Mall of the Emirates, Dubai',
+    lat: 25.118,
+    lng: 55.2007,
+  },
+  {
+    id: 'dubai-omega',
+    cityId: 'dubai',
+    brand: 'Omega',
+    name: 'Omega Dubai',
+    address: 'The Dubai Mall, Downtown Dubai',
+    lat: 25.1972,
+    lng: 55.2796,
+  },
+  {
+    id: 'dubai-chanel',
+    cityId: 'dubai',
+    brand: 'Chanel',
+    name: 'Chanel Dubai',
+    address: 'The Dubai Mall, Downtown Dubai',
+    lat: 25.1985,
+    lng: 55.279,
+  },
+  {
+    id: 'oslo-hermes',
+    cityId: 'oslo',
+    brand: 'Hermès',
+    name: 'Hermès Oslo',
+    address: 'Karl Johans gate 31, 0159 Oslo',
+    lat: 59.9139,
+    lng: 10.741,
+  },
+  {
+    id: 'oslo-omega',
+    cityId: 'oslo',
+    brand: 'Omega',
+    name: 'Omega Oslo',
+    address: 'Karl Johans gate 25, 0159 Oslo',
+    lat: 59.9135,
+    lng: 10.7395,
+  },
+  {
+    id: 'oslo-chanel',
+    cityId: 'oslo',
+    brand: 'Chanel',
+    name: 'Chanel Oslo',
+    address: 'Nedre Slottsgate 6, 0157 Oslo',
+    lat: 59.9115,
+    lng: 10.746,
+  },
+];
+
+export function getCity(cityId) {
+  return CITIES.find((city) => city.id === cityId) ?? CITIES[0];
+}
+
+export function getStoresForCity(cityId) {
+  return STORES.filter((store) => store.cityId === cityId);
+}
+
+export function getStoreByBrand(cityId, brand) {
+  return STORES.find((store) => store.cityId === cityId && store.brand === brand);
+}
+
+export function getNeighborhoods(cityId) {
+  return getCity(cityId).neighborhoods;
+}

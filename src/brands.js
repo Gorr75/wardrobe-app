@@ -1,5 +1,3 @@
-export const CITY = 'Stockholm';
-
 export const BRANDS = ['Hermès', 'Omega', 'Chanel'];
 
 export const BRAND_SIZE_FIELDS = {
@@ -30,21 +28,6 @@ export const STAFF_ROLES = [
   'Sales Manager',
   'Boutique Director',
 ];
-
-export const STOCKHOLM_NEIGHBORHOODS = [
-  'Östermalm',
-  'Norrmalm',
-  'Vasastan',
-  'Djurgården',
-  'Södermalm',
-  'Kungsholmen',
-];
-
-export const BOUTIQUES = {
-  Hermès: 'Hermès — Birger Jarlsgatan',
-  Omega: 'Omega — Biblioteksgatan',
-  Chanel: 'Chanel — Hamngatan',
-};
 
 export const ENTRY_TYPES = [
   'Appointment',
