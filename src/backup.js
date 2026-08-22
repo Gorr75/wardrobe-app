@@ -1,3 +1,5 @@
+import { normalizeImportedData } from './store.js';
+
 const LAST_EXPORT_KEY = 'maison-journal-last-export';
 const LAST_AUTO_EXPORT_KEY = 'maison-journal-last-auto-export';
 const BACKUP_REMINDER_DISMISSED_KEY = 'maison-journal-backup-dismissed';
@@ -12,8 +14,6 @@ let weeklyAutoExportDoneThisSession = false;
 function todayDateString() {
   return new Date().toISOString().slice(0, 10);
 }
-
-import { normalizeImportedData } from './store.js';
 
 export function formatBackupDate(ts) {
   return new Date(ts).toLocaleDateString(undefined, {
@@ -42,9 +42,10 @@ export function setAutoBackupMode(mode) {
 export function buildBackupPayload(data) {
   return {
     app: 'maison-journal',
-    version: 2,
+    version: 3,
     exportedAt: new Date().toISOString(),
-    entries: data.entries,
+    staff: data.staff,
+    visits: data.visits,
   };
 }
 

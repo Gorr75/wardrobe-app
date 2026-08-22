@@ -1,4 +1,3 @@
-import { BRANDS, ENTRY_TYPES } from './brands.js';
 import { CITIES, getCity, getStoresForCity, STORES } from './cities.js';
 import {
   bindChromeAutoHide,
@@ -6,6 +5,7 @@ import {
   brandInitial,
   cityFilterMarkup,
   escapeHtml,
+  headerActionsMarkup,
   homeTabsMarkup,
   listHeroMarkup,
 } from './frame.js';
@@ -29,22 +29,43 @@ import {
   shouldShowBackupReminder,
 } from './backup.js';
 import {
+  ROLE_PRESETS,
+  collectUsedRoles,
+  formatInstagramUrl,
+  formatPhoneLink,
+  getRoleBadgeClass,
+  getStaffBrowseEntries,
+  getStaffRoleFilter,
+  getStaffSort,
+  normalizeStaff,
+  renderStaffAvatar,
+  renderStaffCard,
+  setStaffRoleFilter,
+  setStaffSort,
+} from './staff.js';
+import {
   createId,
-  filterByCity,
+  getLastVisitAt,
+  getVisitsForStore,
   loadData,
+  loadHomeTab,
   loadSelectedCity,
   resetToSeed,
   saveData,
+  saveHomeTab,
   saveSelectedCity,
 } from './store.js';
+
+const SWIPE_DELETE_WIDTH = 88;
 
 const state = {
   data: loadData(),
   cityId: loadSelectedCity(),
-  homeTab: 'stores',
+  homeTab: loadHomeTab(),
   listSearch: '',
   route: { view: 'list' },
-  editingEntry: null,
+  editingStaffId: null,
+  staffFormStoreId: null,
 };
 
 const app = document.getElementById('app');
@@ -53,17 +74,34 @@ function byId(list, id) {
   return list.find((item) => item.id === id);
 }
 
-function cityContext() {
-  const city = getCity(state.cityId);
+function cityStores() {
+  return getStoresForCity(state.cityId);
+}
+
+function statsForCity() {
+  const stores = cityStores();
+  const storeIds = new Set(stores.map((s) => s.id));
+  const cityVisits = state.data.visits.filter((v) => storeIds.has(v.storeId));
+  const visitedStores = new Set(cityVisits.map((v) => v.storeId));
+  const cityStaff = state.data.staff.filter((m) => storeIds.has(m.storeId));
   return {
-    city,
-    stores: getStoresForCity(state.cityId),
-    entries: filterByCity(state.data.entries, state.cityId),
+    stores: stores.length,
+    visited: visitedStores.size,
+    staff: cityStaff.length,
+    visits: cityVisits.length,
   };
 }
 
-function formatDate(value) {
-  return new Date(value).toLocaleDateString(undefined, {
+function matchesSearch(text, query) {
+  return !query || text.toLowerCase().includes(query);
+}
+
+function todayDateString() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function formatVisitDate(ts) {
+  return new Date(ts).toLocaleDateString(undefined, {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -71,15 +109,13 @@ function formatDate(value) {
   });
 }
 
-function statsForCity({ stores, entries }) {
-  return {
-    stores: stores.length,
-    entries: entries.length,
-  };
-}
-
-function matchesSearch(text, query) {
-  return !query || text.toLowerCase().includes(query);
+function formatRelativeVisit(ts) {
+  if (!ts) return 'Never visited';
+  const days = Math.floor((Date.now() - ts) / 86400000);
+  if (days <= 0) return 'Visited today';
+  if (days === 1) return 'Visited yesterday';
+  if (days < 7) return `Visited ${days} days ago`;
+  return formatVisitDate(ts);
 }
 
 async function render() {
@@ -89,6 +125,12 @@ async function render() {
       break;
     case 'store':
       renderStoreDetail(state.route.id);
+      break;
+    case 'add-staff':
+      renderStaffForm(state.route.storeId);
+      break;
+    case 'edit-staff':
+      renderStaffForm(null, state.route.staffId);
       break;
     case 'data':
       renderSettingsView();
@@ -101,11 +143,12 @@ async function render() {
 async function renderList() {
   await checkWeeklyAutoBackup(state.data);
 
-  const { city, stores, entries } = cityContext();
+  const stores = cityStores();
+  const isStaffMode = state.homeTab === 'staff';
   const isMapMode = state.homeTab === 'map';
   const query = state.listSearch.toLowerCase().trim();
-  const stats = statsForCity({ stores, entries });
-  const listBodyHtml = buildListBody({ stores, entries, query, isMapMode });
+  const stats = !isStaffMode && !isMapMode ? statsForCity() : null;
+  const listBodyHtml = buildListBody({ stores, query, isStaffMode, isMapMode });
 
   app.className = 'has-home-tabs';
   app.classList.remove('chrome-hidden');
@@ -113,7 +156,11 @@ async function renderList() {
     <header class="header header-home">
       <div class="header-home-top">
         <h1><span class="app-title-name">Maison Journal</span></h1>
-        <button class="icon-btn" id="settings-btn" type="button" aria-label="Settings">⚙</button>
+        ${headerActionsMarkup({
+          showAdd: isStaffMode,
+          addLabel: 'Add staff',
+          addAria: 'Add staff member',
+        })}
       </div>
       ${listHeroMarkup(stats)}
     </header>
@@ -122,7 +169,7 @@ async function renderList() {
         !isMapMode
           ? `
       <div class="search-box">
-        <input id="search-input" type="search" placeholder="Search ${escapeHtml(state.homeTab)}…" value="${escapeHtml(state.listSearch)}" enterkeyhint="search" />
+        <input id="search-input" type="search" placeholder="${escapeHtml(isStaffMode ? 'Search staff…' : 'Search maisons…')}" value="${escapeHtml(state.listSearch)}" enterkeyhint="search" />
       </div>`
           : ''
       }
@@ -136,15 +183,21 @@ async function renderList() {
     render();
   });
 
+  app.querySelector('#add-btn')?.addEventListener('click', () => {
+    state.route = { view: 'add-staff', storeId: stores[0]?.id || null };
+    render();
+  });
+
   app.querySelectorAll('[data-home-tab]').forEach((btn) => {
     btn.addEventListener('click', () => {
       state.homeTab = btn.dataset.homeTab;
+      saveHomeTab(state.homeTab);
       render();
     });
   });
 
   if (isMapMode) {
-    initStoreMap(stores, city, (storeId) => {
+    initStoreMap(stores, getCity(state.cityId), (storeId) => {
       state.route = { view: 'store', id: storeId };
       render();
     });
@@ -172,7 +225,7 @@ async function renderList() {
   }
 }
 
-function buildListBody({ stores, entries, query, isMapMode }) {
+function buildListBody({ stores, query, isStaffMode, isMapMode }) {
   if (isMapMode) {
     return `
       ${mapLegendMarkup()}
@@ -187,82 +240,227 @@ function buildListBody({ stores, entries, query, isMapMode }) {
       </div>`;
   }
 
-  const cityFilter = cityFilterMarkup(CITIES, state.cityId);
+  if (isStaffMode) {
+    const staffSort = getStaffSort();
+    const staffRoleFilter = getStaffRoleFilter();
+    const allStaffEntries = getStaffBrowseEntries(state.data.staff, STORES, {
+      cityId: state.cityId,
+      sort: staffSort,
+    });
+    const staffResults = getStaffBrowseEntries(state.data.staff, STORES, {
+      query,
+      cityId: state.cityId,
+      roleFilter: staffRoleFilter,
+      sort: staffSort,
+    });
+    const usedRoles = collectUsedRoles(allStaffEntries);
 
-  if (state.homeTab === 'stores') {
-    const filtered = stores.filter(
-      (s) => matchesSearch(`${s.name} ${s.brand} ${s.address}`, query),
-    );
-    if (!filtered.length) {
-      return `${cityFilter}<div class="empty-state"><div class="icon">🏛️</div><h2>No maisons</h2><p>Try another city or search.</p></div>`;
-    }
-    return `
-      ${cityFilter}
-      <div class="list-section-header">
-        <span class="sort-label list-section-label">Maisons</span>
-        <span class="list-section-count">${filtered.length}</span>
-      </div>
-      <ul class="list">
-        ${filtered
-          .map(
-            (store) => `
-          <li>
-            <div class="card restaurant-card" data-store-id="${store.id}">
-              <div class="restaurant-icon ${brandIconClass(store.brand)}">${brandInitial(store.brand)}</div>
-              <div class="info">
-                <div class="title">${escapeHtml(store.name)}</div>
-                <div class="subtitle">${escapeHtml(store.brand)} · ${escapeHtml(store.address.split(',')[0])}</div>
-              </div>
-              <span class="chevron">›</span>
-            </div>
-          </li>`,
-          )
-          .join('')}
-      </ul>`;
-  }
-
-  if (state.homeTab === 'journal') {
-    const filtered = entries
-      .filter((e) => matchesSearch(`${e.brand} ${e.type} ${e.notes}`, query))
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
-    return `
-      ${cityFilter}
-      <div class="section-header">
-        <span class="section-title">Journal</span>
-        <button type="button" class="add-staff-btn" data-add-entry>+ Entry</button>
+    const staffControlsHtml = `
+      <div class="sort-row">
+        <span class="sort-label">Sort</span>
+        <div class="sort-options">
+          <button type="button" class="sort-chip ${staffSort === 'name' ? 'selected' : ''}" data-staff-sort="name">Name</button>
+          <button type="button" class="sort-chip ${staffSort === 'store' ? 'selected' : ''}" data-staff-sort="store">Maison</button>
+          <button type="button" class="sort-chip ${staffSort === 'role' ? 'selected' : ''}" data-staff-sort="role">Role</button>
+        </div>
       </div>
       ${
-        filtered.length
-          ? `<ul class="list">${filtered
-              .map(
-                (e) => `
-            <li>
-              <div class="card restaurant-card" data-entry-id="${e.id}">
-                <div class="restaurant-icon ${brandIconClass(e.brand)}">${brandInitial(e.brand)}</div>
-                <div class="info">
-                  <div class="title">${escapeHtml(e.brand)} · ${escapeHtml(e.type)}</div>
-                  <div class="subtitle">${formatDate(e.date)}</div>
-                  ${e.notes ? `<div class="staff-item note">${escapeHtml(e.notes)}</div>` : ''}
-                </div>
-                <span class="chevron">›</span>
-              </div>
-            </li>`,
-              )
-              .join('')}</ul>`
-          : `<div class="empty-state"><div class="icon">📓</div><h2>No entries</h2><p>Log a visit, fitting, or follow-up.</p></div>`
+        usedRoles.length
+          ? `
+      <div class="tag-filter-row">
+        <div class="tag-filter-header">
+          <span class="sort-label">Filter by role</span>
+          ${staffRoleFilter ? `<button type="button" class="btn-text tag-clear-btn" id="clear-role-filters">All roles</button>` : ''}
+        </div>
+        <div class="tag-filter-scroll">
+          <button type="button" class="tag-filter-chip ${staffRoleFilter === '' ? 'selected' : ''}" data-staff-role="">All roles</button>
+          ${usedRoles
+            .map(
+              (role) =>
+                `<button type="button" class="tag-filter-chip tag-style-${getRoleBadgeClass(role)} ${staffRoleFilter === role ? 'selected' : ''}" data-staff-role="${escapeHtml(role)}">${escapeHtml(role)}</button>`,
+            )
+            .join('')}
+        </div>
+      </div>`
+          : ''
       }`;
+
+    if (!staffResults.length) {
+      return `
+        ${staffControlsHtml}
+        <div class="empty-state">
+          <div class="icon">👤</div>
+          <h2>${allStaffEntries.length === 0 ? 'No staff yet' : 'No staff found'}</h2>
+          <p>${allStaffEntries.length === 0 ? 'Tap + to add your first contact at a maison.' : 'Try another search.'}</p>
+        </div>`;
+    }
+
+    return `
+      ${staffControlsHtml}
+      <ul class="list staff-browse-list">
+        ${staffResults
+          .map((member) => {
+            const phone = member.phone?.trim() || '';
+            return `
+          <li>
+            ${wrapSwipeRow(`
+              <div class="restaurant-card staff-browse-card" data-staff-id="${member.id}" data-store-id="${member.storeId}">
+                ${renderStaffAvatar(member)}
+                <div class="info">
+                  <div class="title">${escapeHtml(member.name)}</div>
+                  <div class="subtitle">
+                    <span class="role-badge ${getRoleBadgeClass(member.role)}">${escapeHtml(member.role)}</span>
+                    <span class="subtitle-sep">·</span>
+                    <button type="button" class="staff-restaurant-link" data-store-id="${member.storeId}">${escapeHtml(member.store.name)}</button>
+                  </div>
+                </div>
+                ${
+                  phone
+                    ? `<a class="call-btn call-btn-list" href="tel:${formatPhoneLink(phone)}" aria-label="Call">📞</a>`
+                    : ''
+                }
+                <span class="chevron" aria-hidden="true">›</span>
+              </div>
+            `)}
+          </li>`;
+          })
+          .join('')}
+      </ul>
+      <p class="swipe-hint">Swipe left on staff to delete</p>`;
   }
 
-  return '';
+  const cityFilter = cityFilterMarkup(CITIES, state.cityId);
+  const filtered = stores.filter((s) => matchesSearch(`${s.name} ${s.brand} ${s.address}`, query));
+
+  if (!filtered.length) {
+    return `${cityFilter}<div class="empty-state"><div class="icon">🏛️</div><h2>No maisons</h2><p>Try another city or search.</p></div>`;
+  }
+
+  return `
+    ${cityFilter}
+    <div class="list-section-header">
+      <span class="sort-label list-section-label">Maisons</span>
+      <span class="list-section-count">${filtered.length}</span>
+    </div>
+    <ul class="list">
+      ${filtered
+        .map((store) => {
+          const lastVisit = getLastVisitAt(state.data.visits, store.id);
+          const staffCount = state.data.staff.filter((m) => m.storeId === store.id).length;
+          return `
+        <li>
+          <div class="card restaurant-card" data-store-id="${store.id}">
+            <div class="restaurant-icon ${brandIconClass(store.brand)}">${brandInitial(store.brand)}</div>
+            <div class="info">
+              <div class="title">${escapeHtml(store.name)}</div>
+              <div class="subtitle">${escapeHtml(store.brand)} · ${escapeHtml(store.address.split(',')[0])}</div>
+              <div class="staff-item note">${escapeHtml(formatRelativeVisit(lastVisit))}${staffCount ? ` · ${staffCount} staff` : ''}</div>
+            </div>
+            <span class="chevron">›</span>
+          </div>
+        </li>`;
+        })
+        .join('')}
+    </ul>`;
+}
+
+function wrapSwipeRow(contentHtml) {
+  return `
+    <div class="swipe-row" data-swipe-actions="delete">
+      <div class="swipe-behind">
+        <button class="swipe-delete-btn" type="button">Delete</button>
+      </div>
+      <div class="swipe-front">${contentHtml}</div>
+    </div>`;
+}
+
+let openSwipeRow = null;
+
+function closeAllSwipes() {
+  document.querySelectorAll('.swipe-row.open, .swipe-row.is-swiping').forEach((row) => {
+    row.classList.remove('open', 'is-swiping');
+    const front = row.querySelector('.swipe-front');
+    if (front) front.style.transform = '';
+  });
+  openSwipeRow = null;
+}
+
+function bindSwipeRow(row, { onTap, onDelete }) {
+  const front = row.querySelector('.swipe-front');
+  const deleteBtn = row.querySelector('.swipe-delete-btn');
+  if (!front || !deleteBtn) return;
+
+  let startX = 0;
+  let baseOffset = 0;
+  let dragging = false;
+
+  deleteBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeAllSwipes();
+    onDelete();
+  });
+
+  front.addEventListener(
+    'touchstart',
+    (e) => {
+      if (e.touches.length !== 1) return;
+      if (openSwipeRow && openSwipeRow !== row) closeAllSwipes();
+      startX = e.touches[0].clientX;
+      baseOffset = row.classList.contains('open') ? -SWIPE_DELETE_WIDTH : 0;
+      dragging = true;
+    },
+    { passive: true },
+  );
+
+  front.addEventListener(
+    'touchmove',
+    (e) => {
+      if (!dragging) return;
+      const delta = e.touches[0].clientX - startX;
+      let offset = baseOffset + delta;
+      if (offset > 0) offset = 0;
+      if (offset < -SWIPE_DELETE_WIDTH) offset = -SWIPE_DELETE_WIDTH;
+      row.classList.toggle('is-swiping', offset < 0);
+      front.style.transform = `translateX(${offset}px)`;
+    },
+    { passive: true },
+  );
+
+  front.addEventListener('touchend', () => {
+    if (!dragging) return;
+    dragging = false;
+    row.classList.remove('is-swiping');
+    const match = front.style.transform.match(/-?\d+/);
+    const offset = match ? parseInt(match[0], 10) : 0;
+    if (offset < -SWIPE_DELETE_WIDTH / 2) {
+      closeAllSwipes();
+      row.classList.add('open');
+      openSwipeRow = row;
+      front.style.transform = `translateX(-${SWIPE_DELETE_WIDTH}px)`;
+    } else {
+      row.classList.remove('open');
+      front.style.transform = '';
+      if (openSwipeRow === row) openSwipeRow = null;
+    }
+  });
+
+  front.addEventListener('click', (e) => {
+    if (row.classList.contains('open')) {
+      e.preventDefault();
+      closeAllSwipes();
+      return;
+    }
+    onTap(e);
+  });
 }
 
 function refreshListBody() {
   const body = app.querySelector('#list-body');
   if (!body || state.homeTab === 'map') return;
-  const ctx = cityContext();
   body.innerHTML = buildListBody({
-    ...ctx,
+    stores: cityStores(),
     query: state.listSearch.toLowerCase().trim(),
+    isStaffMode: state.homeTab === 'staff',
     isMapMode: false,
   });
   bindListBodyEvents();
@@ -270,23 +468,78 @@ function refreshListBody() {
 
 function bindListBodyEvents() {
   app.querySelectorAll('[data-store-id]').forEach((el) => {
+    if (el.closest('.staff-browse-card')) return;
     el.addEventListener('click', () => {
       state.route = { view: 'store', id: el.dataset.storeId };
       render();
     });
   });
 
-  app.querySelector('[data-add-entry]')?.addEventListener('click', () => {
-    state.editingEntry = 'new';
-    openEntryModal();
-  });
-
-  app.querySelectorAll('[data-entry-id]').forEach((el) => {
-    el.addEventListener('click', () => {
-      state.editingEntry = byId(state.data.entries, el.dataset.entryId);
-      openEntryModal();
+  app.querySelectorAll('.staff-browse-card[data-staff-id]').forEach((el) => {
+    const row = el.closest('.swipe-row');
+    if (!row) return;
+    bindSwipeRow(row, {
+      onTap: () => {
+        state.route = { view: 'edit-staff', staffId: el.dataset.staffId };
+        render();
+      },
+      onDelete: () => {
+        confirmAction('Delete staff?', 'Remove this contact from your journal.', async () => {
+          state.data.staff = state.data.staff.filter((m) => m.id !== el.dataset.staffId);
+          saveData(state.data);
+          refreshListBody();
+        });
+      },
     });
   });
+
+  app.querySelectorAll('.staff-restaurant-link').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      state.route = { view: 'store', id: btn.dataset.storeId };
+      render();
+    });
+  });
+
+  app.querySelectorAll('[data-staff-sort]').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      setStaffSort(chip.dataset.staffSort);
+      refreshListBody();
+    });
+  });
+
+  app.querySelectorAll('[data-staff-role]').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      setStaffRoleFilter(chip.dataset.staffRole);
+      refreshListBody();
+    });
+  });
+
+  app.querySelector('#clear-role-filters')?.addEventListener('click', () => {
+    setStaffRoleFilter('');
+    refreshListBody();
+  });
+}
+
+function logVisit(storeId, note) {
+  state.data.visits.push({
+    id: createId('visit'),
+    storeId,
+    at: Date.now(),
+    note: note.trim(),
+  });
+  saveData(state.data);
+}
+
+function addPastVisit(storeId, dateValue, note) {
+  const at = new Date(`${dateValue}T12:00:00`).getTime();
+  state.data.visits.push({
+    id: createId('visit'),
+    storeId,
+    at,
+    note: note.trim(),
+  });
+  saveData(state.data);
 }
 
 function renderStoreDetail(storeId) {
@@ -297,8 +550,9 @@ function renderStoreDetail(storeId) {
     return;
   }
 
-  const { entries } = cityContext();
-  const relatedEntries = entries.filter((e) => e.brand === store.brand);
+  const storeStaff = state.data.staff.filter((m) => m.storeId === storeId);
+  const storeVisits = getVisitsForStore(state.data.visits, storeId);
+  const lastVisitAt = storeVisits[0]?.at || null;
 
   app.className = '';
   app.innerHTML = `
@@ -316,27 +570,59 @@ function renderStoreDetail(storeId) {
         <div class="section-title">Address</div>
         <div class="card">
           <button type="button" class="address-btn" id="directions-btn">${escapeHtml(store.address)}</button>
+          <button class="btn btn-secondary full-width detail-maps-btn" id="open-maps-btn" type="button" style="margin-top:8px;">Open in Apple Maps</button>
         </div>
       </div>
       <div class="section">
-        <div class="section-title">Your journal (${relatedEntries.length})</div>
-        <div class="card">
+        <div class="section-title">Staff</div>
+        <div class="staff-actions">
+          <button class="btn btn-primary full-width" id="add-staff-btn" type="button">Add staff</button>
+        </div>
+        ${
+          storeStaff.length === 0
+            ? `<div class="empty-card">No staff yet — tap the button above</div>`
+            : `<div class="staff-list">${storeStaff.map((member) => wrapSwipeRow(renderStaffCard(member))).join('')}</div>
+               <p class="swipe-hint">Swipe left on staff to delete</p>`
+        }
+      </div>
+      <div class="section">
+        <div class="section-title">Last visit</div>
+        <div class="card visit-card">
+          <div class="visit-summary">
+            <span class="visit-when">${escapeHtml(formatRelativeVisit(lastVisitAt))}</span>
+          </div>
+          <label class="visit-note-label" for="visit-note-input">Visit note</label>
+          <textarea id="visit-note-input" class="visit-note-input" rows="2" placeholder="What happened on this visit?"></textarea>
+          <button class="btn btn-primary full-width" id="log-visit-btn" type="button">Log visit</button>
+          <div class="visit-add-past">
+            <div class="visit-add-label">Add past visit</div>
+            <div class="visit-add-row">
+              <input type="date" id="visit-date-input" max="${todayDateString()}" aria-label="Visit date" />
+              <button class="btn btn-primary visit-add-btn" id="add-visit-date-btn" type="button">Add</button>
+            </div>
+          </div>
           ${
-            relatedEntries.length
-              ? relatedEntries
-                  .slice(0, 5)
-                  .map(
-                    (e) => `
-              <div class="card-row">
-                <span class="label">${formatDate(e.date)}</span>
-                <span class="value">${escapeHtml(e.type)}</span>
-              </div>`,
-                  )
-                  .join('')
-              : '<p class="data-hint" style="padding:14px 16px;">No journal entries for this maison yet.</p>'
+            storeVisits.length
+              ? `
+          <div class="visit-history">
+            <div class="visit-history-title">Visit history</div>
+            <ul class="visit-list">
+              ${storeVisits
+                .map(
+                  (visit) => `
+                <li class="visit-list-item">
+                  <div class="visit-list-main">
+                    <span class="visit-list-date">${escapeHtml(formatVisitDate(visit.at))}</span>
+                    <p class="visit-list-note">${visit.note ? escapeHtml(visit.note) : '<span class="muted">No note</span>'}</p>
+                  </div>
+                </li>`,
+                )
+                .join('')}
+            </ul>
+          </div>`
+              : `<p class="visit-empty">No visits yet</p>`
           }
         </div>
-        <button type="button" class="btn btn-secondary full-width" id="add-entry-btn" style="margin-top:8px;">+ Add entry</button>
       </div>
     </main>
   `;
@@ -346,10 +632,207 @@ function renderStoreDetail(storeId) {
     render();
   });
   app.querySelector('#directions-btn')?.addEventListener('click', () => showNavigationPicker(store));
-  app.querySelector('#add-entry-btn')?.addEventListener('click', () => {
-    state.editingEntry = 'new';
-    state.prefillBrand = store.brand;
-    openEntryModal();
+  app.querySelector('#open-maps-btn')?.addEventListener('click', () => showNavigationPicker(store));
+  app.querySelector('#add-staff-btn')?.addEventListener('click', () => {
+    state.route = { view: 'add-staff', storeId };
+    render();
+  });
+
+  app.querySelectorAll('.staff-list .swipe-row').forEach((row) => {
+    const editBtn = row.querySelector('.edit-staff-btn');
+    bindSwipeRow(row, {
+      onTap: () => {
+        if (editBtn) {
+          state.route = { view: 'edit-staff', staffId: editBtn.dataset.id };
+          render();
+        }
+      },
+      onDelete: () => {
+        const id = editBtn?.dataset.id;
+        if (!id) return;
+        confirmAction('Delete staff?', 'Remove this contact from your journal.', async () => {
+          state.data.staff = state.data.staff.filter((m) => m.id !== id);
+          saveData(state.data);
+          renderStoreDetail(storeId);
+        });
+      },
+    });
+  });
+
+  app.querySelector('#log-visit-btn')?.addEventListener('click', async () => {
+    const note = app.querySelector('#visit-note-input')?.value || '';
+    logVisit(storeId, note);
+    await maybeAutoExport(state.data, 'visit');
+    renderStoreDetail(storeId);
+  });
+
+  app.querySelector('#add-visit-date-btn')?.addEventListener('click', async () => {
+    const dateValue = app.querySelector('#visit-date-input')?.value;
+    if (!dateValue) return;
+    const note = app.querySelector('#visit-note-input')?.value || '';
+    addPastVisit(storeId, dateValue, note);
+    await maybeAutoExport(state.data, 'visit');
+    renderStoreDetail(storeId);
+  });
+}
+
+function renderStaffForm(storeId, editStaffId) {
+  const isEdit = !!editStaffId;
+  let member = isEdit ? byId(state.data.staff, editStaffId) : null;
+  if (isEdit && !member) {
+    state.route = { view: 'list' };
+    render();
+    return;
+  }
+
+  const stores = [...STORES].sort((a, b) => {
+    const cityCmp = getCity(a.cityId).name.localeCompare(getCity(b.cityId).name);
+    if (cityCmp !== 0) return cityCmp;
+    return a.name.localeCompare(b.name);
+  });
+
+  if (!stores.length) {
+    app.className = '';
+    app.innerHTML = `<main class="content"><div class="empty-state"><h2>No maisons</h2></div></main>`;
+    return;
+  }
+
+  let selectedStoreId = member?.storeId || storeId || state.cityId;
+  const storeMatch = stores.find((s) => s.id === selectedStoreId) || stores.find((s) => s.cityId === state.cityId) || stores[0];
+  selectedStoreId = storeMatch.id;
+
+  app.className = '';
+  app.innerHTML = `
+    <header class="header">
+      <button class="back-btn" id="cancel-btn" type="button" aria-label="Back">‹</button>
+      <h1>${isEdit ? 'Edit staff' : 'New staff'}</h1>
+    </header>
+    <main class="content">
+      <form class="form" id="staff-form">
+        <div class="field">
+          <label for="staff-store">Maison</label>
+          <select id="staff-store" class="field-select" required>
+            ${stores
+              .map((store) => {
+                const label = `${store.name} · ${getCity(store.cityId).name}`;
+                return `<option value="${store.id}" ${store.id === selectedStoreId ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+              })
+              .join('')}
+          </select>
+          <p class="field-hint">${isEdit ? 'Change if they moved to another boutique.' : 'Pick which maison they work at.'}</p>
+        </div>
+        <div class="field">
+          <label for="name">Name</label>
+          <input id="name" type="text" value="${escapeHtml(member?.name || '')}" placeholder="Full name" required />
+        </div>
+        <div class="field">
+          <label for="phone">Phone</label>
+          <input id="phone" type="tel" value="${escapeHtml(member?.phone || '')}" placeholder="+46 70 123 45 67" />
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input id="email" type="email" value="${escapeHtml(member?.email || '')}" placeholder="name@example.com" />
+        </div>
+        <div class="field">
+          <label for="staff-instagram">Instagram</label>
+          <input id="staff-instagram" type="text" value="${escapeHtml(member?.instagram || '')}" placeholder="@username" autocapitalize="none" />
+        </div>
+        <div class="field">
+          <label for="role">Role</label>
+          <div class="role-presets" id="role-presets">
+            ${ROLE_PRESETS.map(
+              (preset) =>
+                `<button type="button" class="preset-chip" data-role="${escapeHtml(preset)}">${escapeHtml(preset)}</button>`,
+            ).join('')}
+          </div>
+          <input id="role" type="text" value="${escapeHtml(member?.role || '')}" placeholder="Custom role" required />
+        </div>
+        <div class="field">
+          <label for="note">Note</label>
+          <textarea id="note" placeholder="Short note">${escapeHtml(member?.note || '')}</textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" id="cancel-form">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="save-btn">Save</button>
+        </div>
+      </form>
+    </main>
+  `;
+
+  const nameInput = app.querySelector('#name');
+  const roleInput = app.querySelector('#role');
+  const storeSelect = app.querySelector('#staff-store');
+  const saveBtn = app.querySelector('#save-btn');
+
+  function updatePresetHighlight() {
+    const current = roleInput.value.trim();
+    app.querySelectorAll('.preset-chip').forEach((chip) => {
+      const preset = chip.dataset.role;
+      const isMatch =
+        preset === 'Other' ? current !== '' && !ROLE_PRESETS.slice(0, -1).includes(current) : current === preset;
+      chip.classList.toggle('selected', isMatch);
+    });
+  }
+
+  function updateSave() {
+    saveBtn.disabled = !nameInput.value.trim() || !roleInput.value.trim() || !storeSelect.value;
+  }
+
+  nameInput.addEventListener('input', updateSave);
+  roleInput.addEventListener('input', () => {
+    updateSave();
+    updatePresetHighlight();
+  });
+  storeSelect.addEventListener('change', updateSave);
+  updateSave();
+  updatePresetHighlight();
+
+  app.querySelectorAll('.preset-chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      if (chip.dataset.role === 'Other') {
+        roleInput.value = '';
+        roleInput.focus();
+      } else {
+        roleInput.value = chip.dataset.role;
+      }
+      updateSave();
+      updatePresetHighlight();
+    });
+  });
+
+  const cancel = () => {
+    if (storeId && !isEdit) {
+      state.route = { view: 'store', id: storeId };
+    } else {
+      state.route = { view: 'list' };
+    }
+    render();
+  };
+
+  app.querySelector('#cancel-btn')?.addEventListener('click', cancel);
+  app.querySelector('#cancel-form')?.addEventListener('click', cancel);
+
+  app.querySelector('#staff-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const payload = normalizeStaff({
+      storeId: storeSelect.value,
+      name: nameInput.value.trim(),
+      role: roleInput.value.trim(),
+      phone: app.querySelector('#phone').value.trim(),
+      email: app.querySelector('#email').value.trim(),
+      instagram: app.querySelector('#staff-instagram').value.trim(),
+      note: app.querySelector('#note').value.trim(),
+      image: member?.image || '',
+    });
+    if (isEdit) {
+      Object.assign(member, payload);
+    } else {
+      state.data.staff.push({ id: createId('staff'), ...payload });
+    }
+    saveData(state.data);
+    const returnStoreId = payload.storeId;
+    state.route = returnStoreId ? { view: 'store', id: returnStoreId } : { view: 'list' };
+    render();
   });
 }
 
@@ -393,7 +876,7 @@ function showBackupReminder() {
   overlay.innerHTML = `
     <div class="modal" role="dialog" aria-modal="true">
       <h2>Time for a backup?</h2>
-      <p class="modal-text">You have not exported a backup in over ${BACKUP_REMINDER_DAYS} days. Save one to protect your journal.</p>
+      <p class="modal-text">You have not exported a backup in over ${BACKUP_REMINDER_DAYS} days. Save one to protect your staff and visit history.</p>
       <div class="modal-actions">
         <button class="btn btn-secondary modal-btn" id="reminder-later" type="button">Remind me later</button>
         <button class="btn btn-primary modal-btn" id="reminder-export" type="button">Export now</button>
@@ -434,7 +917,7 @@ function renderSettingsView() {
         <div class="section-title">Backup</div>
         <div class="card settings-card">
           <p class="data-hint backup-last-hint">${escapeHtml(getLastExportLabel())}</p>
-          <p class="data-hint">Export a JSON backup of your journal entries across all cities. To restore, use Import from file below.</p>
+          <p class="data-hint">Export staff contacts and visit history across all cities. To restore, use Import from file below.</p>
           <button class="btn btn-secondary full-width" id="export-btn" type="button">Export to file</button>
           <label class="btn btn-secondary full-width import-label">
             Import from file
@@ -445,16 +928,16 @@ function renderSettingsView() {
             <div class="sort-options auto-backup-options">
               <button type="button" class="sort-chip ${autoBackupMode === 'off' ? 'selected' : ''}" data-auto-backup="off">Off</button>
               <button type="button" class="sort-chip ${autoBackupMode === 'weekly' ? 'selected' : ''}" data-auto-backup="weekly">Weekly</button>
-              <button type="button" class="sort-chip ${autoBackupMode === 'visit' ? 'selected' : ''}" data-auto-backup="visit">On entry</button>
+              <button type="button" class="sort-chip ${autoBackupMode === 'visit' ? 'selected' : ''}" data-auto-backup="visit">On visit</button>
             </div>
-            <p class="data-hint auto-backup-hint">Weekly saves once per week. On entry saves when you log a journal entry. Backups download to your device.</p>
+            <p class="data-hint auto-backup-hint">Weekly saves once per week. On visit saves when you log a maison visit. Backups download to your device.</p>
           </div>
         </div>
       </div>
       <div class="section">
         <div class="section-title">Sample data</div>
         <div class="card settings-card">
-          <p class="data-hint">Replace all entries with a few demo journal notes.</p>
+          <p class="data-hint">Replace all staff and visits with demo data.</p>
           <button class="btn btn-delete full-width" id="reset-btn" type="button">Reset sample data</button>
         </div>
       </div>
@@ -482,7 +965,7 @@ function renderSettingsView() {
     if (!file) return;
     confirmAction(
       'Replace all data?',
-      'This replaces all journal entries with the backup file. Export first if you need a copy of current data.',
+      'This replaces all staff and visits with the backup file. Export first if you need a copy of current data.',
       async () => {
         try {
           state.data = await importAllData(file);
@@ -502,7 +985,7 @@ function renderSettingsView() {
   app.querySelector('#reset-btn')?.addEventListener('click', () => {
     confirmAction(
       'Reset sample data?',
-      'This permanently replaces all journal entries with the built-in demo notes.',
+      'This permanently replaces all staff and visits with the built-in demo data.',
       async () => {
         state.data = resetToSeed();
         saveData(state.data);
@@ -512,65 +995,6 @@ function renderSettingsView() {
       'Reset',
     );
   });
-}
-
-function openEntryModal() {
-  const entry = state.editingEntry === 'new' ? null : state.editingEntry;
-  const isNew = !entry;
-  const defaultBrand = state.prefillBrand || entry?.brand || 'Hermès';
-  state.prefillBrand = null;
-
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
-  overlay.innerHTML = `
-    <div class="modal" role="dialog">
-      <h2>${isNew ? 'New journal entry' : 'Edit entry'}</h2>
-      <form class="form" id="entry-form">
-        <div class="field"><label>Date</label><input name="date" type="datetime-local" required value="${entry ? toLocalInput(entry.date) : toLocalInput(new Date())}" /></div>
-        <div class="field"><label>Maison</label><select name="brand">${BRANDS.map((b) => `<option ${defaultBrand === b ? 'selected' : ''}>${b}</option>`).join('')}</select></div>
-        <div class="field"><label>Type</label><select name="type">${ENTRY_TYPES.map((t) => `<option ${entry?.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-        <div class="field"><label>Notes</label><textarea name="notes" required>${escapeHtml(entry?.notes || '')}</textarea></div>
-        <div class="field"><label>Follow-up (optional)</label><input name="followUpDate" type="date" value="${escapeHtml(entry?.followUpDate || '')}" /></div>
-        <div class="modal-actions">
-          <button type="button" class="btn btn-secondary" id="cancel-btn">Cancel</button>
-          <button type="submit" class="btn btn-primary">Save</button>
-        </div>
-      </form>
-    </div>`;
-
-  overlay.querySelector('#cancel-btn')?.addEventListener('click', () => {
-    state.editingEntry = null;
-    overlay.remove();
-  });
-  overlay.querySelector('#entry-form')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const form = e.target;
-    const payload = {
-      cityId: state.cityId,
-      date: new Date(form.date.value).toISOString(),
-      brand: form.brand.value,
-      type: form.type.value,
-      notes: form.notes.value.trim(),
-      followUpDate: form.followUpDate.value || null,
-    };
-    if (isNew) state.data.entries.push({ id: createId('entry'), ...payload });
-    else Object.assign(state.editingEntry, payload);
-    saveData(state.data);
-    state.editingEntry = null;
-    overlay.remove();
-    await maybeAutoExport(state.data, 'visit');
-    render();
-  });
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) overlay.remove();
-  });
-  document.body.appendChild(overlay);
-}
-
-function toLocalInput(value) {
-  const date = new Date(value);
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 render();
