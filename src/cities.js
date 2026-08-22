@@ -3,7 +3,7 @@ export const CITIES = [
     id: 'stockholm',
     name: 'Stockholm',
     country: 'Sweden',
-    center: { lat: 59.3346, lng: 18.071 },
+    center: { lat: 59.3338, lng: 18.071 },
     zoom: 14,
     neighborhoods: ['Östermalm', 'Norrmalm', 'Vasastan', 'Djurgården', 'Södermalm', 'Kungsholmen'],
   },
@@ -55,27 +55,27 @@ export const STORES = [
     cityId: 'stockholm',
     brand: 'Hermès',
     name: 'Hermès Stockholm',
-    address: 'Birger Jarlsgatan 27, 114 34 Stockholm',
-    lat: 59.3369,
-    lng: 18.0736,
+    address: 'Hamngatan 18-20, Nordiska Kompaniet, 111 47 Stockholm',
+    lat: 59.333,
+    lng: 18.069,
   },
   {
     id: 'stockholm-omega',
     cityId: 'stockholm',
     brand: 'Omega',
     name: 'Omega Stockholm',
-    address: 'Biblioteksgatan 5, 114 46 Stockholm',
-    lat: 59.3347,
-    lng: 18.0734,
+    address: 'Biblioteksgatan 3, 111 46 Stockholm',
+    lat: 59.3341,
+    lng: 18.0728,
   },
   {
     id: 'stockholm-chanel',
     cityId: 'stockholm',
     brand: 'Chanel',
     name: 'Chanel Stockholm',
-    address: 'Hamngatan 31, 111 47 Stockholm',
-    lat: 59.3334,
-    lng: 18.0686,
+    address: 'Birger Jarlsgatan 7, 111 45 Stockholm',
+    lat: 59.3338,
+    lng: 18.0746,
   },
   {
     id: 'copenhagen-hermes',
@@ -222,6 +222,10 @@ export const ALL_CITIES_MAP = {
   center: { lat: 52.2, lng: 12.5 },
   zoom: 4,
 };
+
+export function getStoresForCity(cityId) {
+  return STORES.filter((store) => store.cityId === cityId);
+}
 
 export function getStoresForFilter(cityId) {
   if (!cityId) {
