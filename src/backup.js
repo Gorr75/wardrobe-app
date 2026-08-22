@@ -7,7 +7,7 @@ const AUTO_BACKUP_KEY = 'maison-journal-auto-backup';
 const FIRST_USE_KEY = 'maison-journal-first-use';
 
 export const APP_VERSION = '0.1';
-export const APP_BUILD = 12;
+export const APP_BUILD = 13;
 export const BACKUP_REMINDER_DAYS = 30;
 
 export function appVersionLabel() {
@@ -47,7 +47,7 @@ export function setAutoBackupMode(mode) {
 export function buildBackupPayload(data) {
   return {
     app: 'maison-journal',
-    version: 4,
+    version: 5,
     appVersion: APP_VERSION,
     appBuild: APP_BUILD,
     exportedAt: new Date().toISOString(),
@@ -55,6 +55,8 @@ export function buildBackupPayload(data) {
     visits: data.visits,
     storeMeta: data.storeMeta || {},
     brandSizes: data.brandSizes || {},
+    customStores: data.customStores || [],
+    purchases: data.purchases || [],
   };
 }
 

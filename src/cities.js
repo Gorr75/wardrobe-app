@@ -244,15 +244,30 @@ export function getStoresForCity(cityId) {
   return STORES.filter((store) => store.cityId === cityId);
 }
 
-export function getStoresForFilter(cityId) {
+export function isCustomStore(store) {
+  return String(store?.id || '').startsWith('custom-');
+}
+
+export function getAllStores(cityId, customStores = []) {
+  const catalog = cityId ? getStoresForCity(cityId) : [...STORES];
+  const custom = cityId ? customStores.filter((store) => store.cityId === cityId) : [...customStores];
+  const merged = [...catalog, ...custom];
   if (!cityId) {
-    return [...STORES].sort((a, b) => {
+    return merged.sort((a, b) => {
       const cityCmp = getCity(a.cityId).name.localeCompare(getCity(b.cityId).name);
       if (cityCmp !== 0) return cityCmp;
       return a.name.localeCompare(b.name);
     });
   }
-  return getStoresForCity(cityId);
+  return merged.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export function getStoreById(storeId, customStores = []) {
+  return customStores.find((store) => store.id === storeId) || STORES.find((store) => store.id === storeId);
+}
+
+export function getStoresForFilter(cityId, customStores = []) {
+  return getAllStores(cityId, customStores);
 }
 
 export function getStoreByBrand(cityId, brand) {

@@ -71,6 +71,21 @@ export function homeTabsMarkup(homeTab) {
     </nav>`;
 }
 
+export function visitedStoresMenuMarkup(stores) {
+  if (!stores.length) return '';
+  return `
+    <div class="visited-stores-menu" aria-label="Visited maisons">
+      <div class="visited-stores-scroll">
+        ${stores
+          .map(
+            (store) =>
+              `<button type="button" class="visited-store-chip" data-store-id="${escapeHtml(store.id)}">${escapeHtml(store.name)}</button>`,
+          )
+          .join('')}
+      </div>
+    </div>`;
+}
+
 export function listHeroMarkup(stats) {
   if (!stats) return '';
   return `
@@ -137,12 +152,15 @@ export function cityFilterMarkup(cities, selectedCityId) {
 export function brandIconClass(brand) {
   if (brand === 'Hermès') return 'brand-icon-hermes';
   if (brand === 'Omega') return 'brand-icon-omega';
-  return 'brand-icon-chanel';
+  if (brand === 'Chanel') return 'brand-icon-chanel';
+  return 'brand-icon-custom';
 }
 
 export function brandInitial(brand) {
   if (brand === 'Hermès') return 'H';
   if (brand === 'Omega') return 'Ω';
-  return 'C';
+  if (brand === 'Chanel') return 'C';
+  const trimmed = (brand || '').trim();
+  return trimmed ? trimmed.charAt(0).toUpperCase() : '?';
 }
 

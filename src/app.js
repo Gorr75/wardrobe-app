@@ -1,4 +1,4 @@
-import { ALL_CITIES_MAP, CITIES, getCity, getStoreInstagramLabel, getStoresForFilter, STORES } from './cities.js';
+import { ALL_CITIES_MAP, CITIES, getCity, getStoreInstagramLabel, getStoreById, getStoresForFilter, isCustomStore, STORES } from './cities.js';
 import {
   bindChromeAutoHide,
   brandIconClass,
@@ -8,9 +8,11 @@ import {
   headerActionsMarkup,
   homeTabsMarkup,
   listHeroMarkup,
+  visitedStoresMenuMarkup,
 } from './frame.js';
 import {
   BRAND_SIZE_FIELDS,
+  BRANDS,
   getBrandSizeSummary,
 } from './brands.js';
 import {
@@ -54,10 +56,17 @@ import {
   photoPickerMarkup,
   renderStoreThumb,
 } from './photos.js';
+import { normalizePurchase, renderPurchaseCard } from './purchases.js';
 import {
   createId,
+  deleteCustomStore,
+  DEFAULT_CITY_ID,
+  geocodeAddress,
   getLastVisitAt,
+  getPurchasesForStore,
+  getShowVisitedMenu,
   getStoreMeta,
+  getVisitedStores,
   getVisitsForStore,
   loadData,
   loadHomeTab,
@@ -66,7 +75,9 @@ import {
   saveData,
   saveHomeTab,
   saveSelectedCity,
+  setShowVisitedMenu,
   setStoreMeta,
+  upsertCustomStore,
 } from './store.js';
 
 const SWIPE_DELETE_WIDTH = 88;
@@ -88,7 +99,15 @@ function byId(list, id) {
 }
 
 function cityStores() {
-  return getStoresForFilter(state.cityId);
+  return getStoresForFilter(state.cityId, state.data.customStores || []);
+}
+
+function findStore(storeId) {
+  return getStoreById(storeId, state.data.customStores || []);
+}
+
+function visitedStoresForMenu() {
+  return getVisitedStores(cityStores(), state.data.visits, state.cityId);
 }
 
 function mapViewCity() {
@@ -156,6 +175,15 @@ async function render() {
     case 'edit-store':
       renderStoreEdit(state.route.id);
       break;
+    case 'add-store':
+      renderCustomStoreForm();
+      break;
+    case 'add-purchase':
+      renderPurchaseForm(state.route.storeId);
+      break;
+    case 'edit-purchase':
+      renderPurchaseForm(state.route.storeId, state.route.purchaseId);
+      break;
     case 'data':
       renderSettingsView();
       break;
@@ -170,8 +198,10 @@ async function renderList() {
   const stores = cityStores();
   const isStaffMode = state.homeTab === 'staff';
   const isMapMode = state.homeTab === 'map';
+  const isStoresMode = state.homeTab === 'stores';
   const query = state.listSearch.toLowerCase().trim();
   const stats = !isStaffMode && !isMapMode ? statsForCity() : null;
+  const visitedMenuStores = isStoresMode && getShowVisitedMenu() ? visitedStoresForMenu() : [];
   const listBodyHtml = buildListBody({ stores, query, isStaffMode, isMapMode });
 
   app.className = 'has-home-tabs';
@@ -181,12 +211,13 @@ async function renderList() {
       <div class="header-home-top">
         <h1><span class="app-title-name">Maison Journal</span></h1>
         ${headerActionsMarkup({
-          showAdd: isStaffMode,
-          addLabel: 'Add staff',
-          addAria: 'Add staff member',
+          showAdd: isStaffMode || isStoresMode,
+          addLabel: isStaffMode ? 'Add staff' : 'Add maison',
+          addAria: isStaffMode ? 'Add staff member' : 'Add maison',
         })}
       </div>
       ${listHeroMarkup(stats)}
+      ${visitedStoresMenuMarkup(visitedMenuStores)}
     </header>
     <main class="content ${isMapMode ? 'content-map' : ''}">
       ${
@@ -208,8 +239,19 @@ async function renderList() {
   });
 
   app.querySelector('#add-btn')?.addEventListener('click', () => {
-    state.route = { view: 'add-staff', storeId: stores[0]?.id || null };
+    if (state.homeTab === 'staff') {
+      state.route = { view: 'add-staff', storeId: stores[0]?.id || null };
+    } else {
+      state.route = { view: 'add-store' };
+    }
     render();
+  });
+
+  app.querySelectorAll('.visited-store-chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      state.route = { view: 'store', id: chip.dataset.storeId };
+      render();
+    });
   });
 
   app.querySelectorAll('[data-home-tab]').forEach((btn) => {
@@ -263,11 +305,11 @@ function buildListBody({ stores, query, isStaffMode, isMapMode }) {
   if (isStaffMode) {
     const staffSort = getStaffSort();
     const staffRoleFilter = getStaffRoleFilter();
-    const allStaffEntries = getStaffBrowseEntries(state.data.staff, STORES, {
+    const allStaffEntries = getStaffBrowseEntries(state.data.staff, cityStores(), {
       cityId: state.cityId,
       sort: staffSort,
     });
-    const staffResults = getStaffBrowseEntries(state.data.staff, STORES, {
+    const staffResults = getStaffBrowseEntries(state.data.staff, cityStores(), {
       query,
       cityId: state.cityId,
       roleFilter: staffRoleFilter,
@@ -371,12 +413,13 @@ function buildListBody({ stores, query, isStaffMode, isMapMode }) {
           const thumb = meta.image
             ? renderStoreThumb(meta.image, store.brand, '', brandIconClass(store.brand))
             : `<div class="restaurant-icon ${brandIconClass(store.brand)}">${brandInitial(store.brand)}</div>`;
+          const customBadge = isCustomStore(store) ? `<span class="custom-store-badge">Custom</span>` : '';
           return `
         <li>
           <div class="card restaurant-card" data-store-id="${store.id}">
             ${thumb}
             <div class="info">
-              <div class="title">${escapeHtml(store.name)}</div>
+              <div class="title">${escapeHtml(store.name)} ${customBadge}</div>
               <div class="subtitle">${escapeHtml(store.brand)} · ${allCities ? escapeHtml(getCity(store.cityId).name) : escapeHtml(store.address.split(',')[0])}</div>
               <div class="staff-item note">${escapeHtml(formatRelativeVisit(lastVisit))}${staffCount ? ` · ${staffCount} staff` : ''}</div>
             </div>
@@ -581,7 +624,7 @@ function addPastVisit(storeId, dateValue, note) {
 }
 
 function renderStoreDetail(storeId) {
-  const store = STORES.find((s) => s.id === storeId);
+  const store = findStore(storeId);
   if (!store) {
     state.route = { view: 'list' };
     render();
@@ -591,8 +634,10 @@ function renderStoreDetail(storeId) {
   const meta = getStoreMeta(state.data, storeId);
   const storeStaff = state.data.staff.filter((m) => m.storeId === storeId);
   const storeVisits = getVisitsForStore(state.data.visits, storeId);
+  const storePurchases = getPurchasesForStore(state.data.purchases || [], storeId);
   const lastVisitAt = storeVisits[0]?.at || null;
   const sizeSummary = getBrandSizeSummary(state.data.brandSizes, store.brand);
+  const hasBrandSizes = BRAND_SIZE_FIELDS[store.brand];
 
   const instagramLabel = getStoreInstagramLabel(store);
   const instagramUrl = instagramLabel ? formatInstagramUrl(instagramLabel) : '';
@@ -641,9 +686,12 @@ function renderStoreDetail(storeId) {
           </div>`
           }
         </div>
-        <button class="btn btn-primary full-width" id="edit-store-btn" type="button">Edit maison</button>
+        <button class="btn btn-primary full-width" id="edit-store-btn" type="button">${isCustomStore(store) ? 'Edit maison' : 'Edit photo & note'}</button>
       </div>
 
+      ${
+        hasBrandSizes
+          ? `
       <div class="section">
         <div class="section-header-row">
           <div class="section-title">My ${escapeHtml(store.brand)} sizes</div>
@@ -653,6 +701,21 @@ function renderStoreDetail(storeId) {
           <p class="data-hint size-brand-hint">Same at every ${escapeHtml(store.brand)} boutique</p>
           <p class="brand-size-summary">${sizeSummary ? escapeHtml(sizeSummary) : '<span class="muted">No sizes yet</span>'}</p>
         </div>
+      </div>`
+          : ''
+      }
+
+      <div class="section">
+        <div class="section-header-row">
+          <div class="section-title">Purchases</div>
+          <button type="button" class="btn-text" id="add-purchase-btn">Add</button>
+        </div>
+        ${
+          storePurchases.length
+            ? `<div class="purchase-list">${storePurchases.map((purchase) => wrapSwipeRow(renderPurchaseCard(purchase))).join('')}</div>
+               <p class="swipe-hint">Swipe left on purchases to delete</p>`
+            : `<div class="empty-card">No purchases yet — tap Add to log an item</div>`
+        }
       </div>
 
       <div class="section">
@@ -721,6 +784,10 @@ function renderStoreDetail(storeId) {
     render();
   });
   app.querySelector('#edit-brand-sizes')?.addEventListener('click', () => openBrandSizesModal(store.brand, storeId));
+  app.querySelector('#add-purchase-btn')?.addEventListener('click', () => {
+    state.route = { view: 'add-purchase', storeId };
+    render();
+  });
   app.querySelector('#add-staff-btn')?.addEventListener('click', () => {
     state.route = { view: 'add-staff', storeId };
     render();
@@ -747,6 +814,27 @@ function renderStoreDetail(storeId) {
     });
   });
 
+  app.querySelectorAll('.purchase-list .swipe-row').forEach((row) => {
+    const editBtn = row.querySelector('.edit-purchase-btn');
+    bindSwipeRow(row, {
+      onTap: () => {
+        if (editBtn) {
+          state.route = { view: 'edit-purchase', storeId, purchaseId: editBtn.dataset.id };
+          render();
+        }
+      },
+      onDelete: () => {
+        const id = editBtn?.dataset.id;
+        if (!id) return;
+        confirmAction('Delete purchase?', 'Remove this item from your journal.', async () => {
+          state.data.purchases = (state.data.purchases || []).filter((purchase) => purchase.id !== id);
+          saveData(state.data);
+          renderStoreDetail(storeId);
+        });
+      },
+    });
+  });
+
   app.querySelector('#log-visit-btn')?.addEventListener('click', async () => {
     const note = app.querySelector('#visit-note-input')?.value || '';
     logVisit(storeId, note);
@@ -765,10 +853,15 @@ function renderStoreDetail(storeId) {
 }
 
 function renderStoreEdit(storeId) {
-  const store = STORES.find((s) => s.id === storeId);
+  const store = findStore(storeId);
   if (!store) {
     state.route = { view: 'list' };
     render();
+    return;
+  }
+
+  if (isCustomStore(store)) {
+    renderCustomStoreForm(storeId);
     return;
   }
 
@@ -821,6 +914,267 @@ function renderStoreEdit(storeId) {
       image: photoPicker.getImagePayload(meta.image),
       note: app.querySelector('#store-note')?.value.trim() || '',
     });
+    saveData(state.data);
+    state.route = { view: 'store', id: storeId };
+    render();
+  });
+}
+
+function renderCustomStoreForm(storeId = null) {
+  const isEdit = !!storeId;
+  const store = isEdit ? findStore(storeId) : null;
+  if (isEdit && !store) {
+    state.route = { view: 'list' };
+    render();
+    return;
+  }
+  if (isEdit && store && !isCustomStore(store)) {
+    renderStoreEdit(storeId);
+    return;
+  }
+
+  const meta = isEdit ? getStoreMeta(state.data, storeId) : { image: '', note: '' };
+  const selectedCityId = store?.cityId || state.cityId || DEFAULT_CITY_ID || CITIES[0].id;
+  const selectedBrand = store?.brand || BRANDS[0];
+  const isOtherBrand = selectedBrand && !BRANDS.includes(selectedBrand);
+
+  app.className = '';
+  app.innerHTML = `
+    <header class="header">
+      <button class="back-btn" id="cancel-btn" type="button" aria-label="Back">‹</button>
+      <h1>${isEdit ? 'Edit maison' : 'New maison'}</h1>
+    </header>
+    <main class="content">
+      <form class="form" id="custom-store-form">
+        <div class="field">
+          <label>Photo</label>
+          ${photoPickerMarkup({
+            previewImage: meta.image,
+            placeholder: 'Add maison photo',
+            placeholderClass: 'staff-photo-preview',
+          })}
+        </div>
+        <div class="field">
+          <label for="store-name">Name</label>
+          <input id="store-name" type="text" value="${escapeHtml(store?.name || '')}" placeholder="Boutique name" required />
+        </div>
+        <div class="field">
+          <label for="store-brand">Brand</label>
+          <select id="store-brand" class="field-select">
+            ${BRANDS.map((brand) => `<option value="${escapeHtml(brand)}" ${brand === selectedBrand ? 'selected' : ''}>${escapeHtml(brand)}</option>`).join('')}
+            <option value="Other" ${isOtherBrand || selectedBrand === 'Other' ? 'selected' : ''}>Other</option>
+          </select>
+        </div>
+        <div class="field" id="custom-brand-field" ${isOtherBrand || selectedBrand === 'Other' ? '' : 'hidden'}>
+          <label for="store-brand-custom">Custom brand</label>
+          <input id="store-brand-custom" type="text" value="${escapeHtml(isOtherBrand ? selectedBrand : '')}" placeholder="Brand name" />
+        </div>
+        <div class="field">
+          <label for="store-city">City</label>
+          <select id="store-city" class="field-select" required>
+            ${CITIES.map(
+              (city) =>
+                `<option value="${city.id}" ${city.id === selectedCityId ? 'selected' : ''}>${escapeHtml(city.name)}, ${escapeHtml(city.country)}</option>`,
+            ).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label for="store-address">Address</label>
+          <input id="store-address" type="text" value="${escapeHtml(store?.address || '')}" placeholder="Street address" required />
+        </div>
+        <div class="field">
+          <label for="store-instagram">Instagram</label>
+          <input id="store-instagram" type="text" value="${escapeHtml(store?.instagram || '')}" placeholder="@boutique or brand handle" autocapitalize="none" />
+        </div>
+        <div class="field">
+          <label for="store-note">Note</label>
+          <textarea id="store-note" placeholder="Your notes about this boutique">${escapeHtml(meta.note || '')}</textarea>
+        </div>
+        <div class="form-actions">
+          ${isEdit ? `<button type="button" class="btn btn-delete" id="delete-store-btn">Delete maison</button>` : ''}
+          <button type="button" class="btn btn-secondary" id="cancel-form">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="save-store-btn">Save</button>
+        </div>
+      </form>
+    </main>
+  `;
+
+  const formRoot = app.querySelector('#custom-store-form');
+  const brandSelect = app.querySelector('#store-brand');
+  const customBrandField = app.querySelector('#custom-brand-field');
+  const saveBtn = app.querySelector('#save-store-btn');
+  const photoPicker = bindPhotoPicker(formRoot, {
+    initialImage: meta.image,
+    placeholder: 'Add maison photo',
+  });
+
+  function updateBrandField() {
+    const showCustom = brandSelect.value === 'Other';
+    customBrandField.hidden = !showCustom;
+  }
+
+  brandSelect.addEventListener('change', updateBrandField);
+  updateBrandField();
+
+  const cancel = () => {
+    if (isEdit) state.route = { view: 'store', id: storeId };
+    else state.route = { view: 'list' };
+    render();
+  };
+
+  app.querySelector('#cancel-btn')?.addEventListener('click', cancel);
+  app.querySelector('#cancel-form')?.addEventListener('click', cancel);
+
+  app.querySelector('#delete-store-btn')?.addEventListener('click', () => {
+    confirmAction(
+      'Delete maison?',
+      'This removes the maison and all linked staff, visits, and purchases.',
+      async () => {
+        deleteCustomStore(state.data, storeId);
+        saveData(state.data);
+        state.route = { view: 'list' };
+        render();
+      },
+      'Delete',
+    );
+  });
+
+  app.querySelector('#custom-store-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = app.querySelector('#store-name')?.value.trim();
+    const address = app.querySelector('#store-address')?.value.trim();
+    if (!name || !address) return;
+
+    let brand = brandSelect.value;
+    if (brand === 'Other') {
+      brand = app.querySelector('#store-brand-custom')?.value.trim() || 'Other';
+    }
+
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving…';
+
+    const cityId = app.querySelector('#store-city')?.value || CITIES[0].id;
+    const city = getCity(cityId);
+    const coords = (await geocodeAddress(`${address}, ${city.name}`)) || {
+      lat: city.center.lat,
+      lng: city.center.lng,
+    };
+
+    const saved = upsertCustomStore(
+      state.data,
+      {
+        cityId,
+        brand,
+        name,
+        address,
+        lat: coords.lat,
+        lng: coords.lng,
+        instagram: app.querySelector('#store-instagram')?.value.trim() || '',
+      },
+      isEdit ? storeId : null,
+    );
+
+    setStoreMeta(state.data, saved.id, {
+      image: photoPicker.getImagePayload(meta.image),
+      note: app.querySelector('#store-note')?.value.trim() || '',
+    });
+    saveData(state.data);
+    state.route = { view: 'store', id: saved.id };
+    render();
+  });
+}
+
+function renderPurchaseForm(storeId, purchaseId = null) {
+  const store = findStore(storeId);
+  if (!store) {
+    state.route = { view: 'list' };
+    render();
+    return;
+  }
+
+  const isEdit = !!purchaseId;
+  const purchase = isEdit ? (state.data.purchases || []).find((item) => item.id === purchaseId) : null;
+  if (isEdit && !purchase) {
+    state.route = { view: 'store', id: storeId };
+    render();
+    return;
+  }
+
+  app.className = '';
+  app.innerHTML = `
+    <header class="header">
+      <button class="back-btn" id="cancel-btn" type="button" aria-label="Back">‹</button>
+      <h1>${isEdit ? 'Edit purchase' : 'New purchase'}</h1>
+    </header>
+    <main class="content">
+      <form class="form" id="purchase-form">
+        <p class="field-hint purchase-store-hint">${escapeHtml(store.name)} · ${escapeHtml(getCity(store.cityId).name)}</p>
+        <div class="field">
+          <label>Photo</label>
+          ${photoPickerMarkup({
+            previewImage: purchase?.image || '',
+            placeholder: 'Add item photo',
+            placeholderClass: 'staff-photo-preview',
+          })}
+        </div>
+        <div class="field">
+          <label for="purchase-name">Name</label>
+          <input id="purchase-name" type="text" value="${escapeHtml(purchase?.name || '')}" placeholder="Item name" required />
+        </div>
+        <div class="field">
+          <label for="purchase-price">Price</label>
+          <input id="purchase-price" type="text" value="${escapeHtml(purchase?.price || '')}" placeholder="e.g. 12 500 SEK" />
+        </div>
+        <div class="field">
+          <label for="purchase-size">Size</label>
+          <input id="purchase-size" type="text" value="${escapeHtml(purchase?.size || '')}" placeholder="e.g. 38, Medium, 41 mm" />
+        </div>
+        <div class="field">
+          <label for="purchase-date">Purchase date</label>
+          <input id="purchase-date" type="date" value="${purchase ? new Date(purchase.purchasedAt).toISOString().slice(0, 10) : todayDateString()}" max="${todayDateString()}" />
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" id="cancel-form">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </main>
+  `;
+
+  const formRoot = app.querySelector('#purchase-form');
+  const photoPicker = bindPhotoPicker(formRoot, {
+    initialImage: purchase?.image || '',
+    placeholder: 'Add item photo',
+  });
+
+  const cancel = () => {
+    state.route = { view: 'store', id: storeId };
+    render();
+  };
+
+  app.querySelector('#cancel-btn')?.addEventListener('click', cancel);
+  app.querySelector('#cancel-form')?.addEventListener('click', cancel);
+
+  app.querySelector('#purchase-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const payload = normalizePurchase({
+      id: purchase?.id || createId('purchase'),
+      storeId,
+      name: app.querySelector('#purchase-name')?.value.trim(),
+      price: app.querySelector('#purchase-price')?.value.trim(),
+      size: app.querySelector('#purchase-size')?.value.trim(),
+      image: photoPicker.getImagePayload(purchase?.image || ''),
+      purchasedAt: new Date(`${app.querySelector('#purchase-date')?.value || todayDateString()}T12:00:00`).getTime(),
+    });
+
+    if (!state.data.purchases) state.data.purchases = [];
+    if (isEdit) {
+      const index = state.data.purchases.findIndex((item) => item.id === purchaseId);
+      if (index >= 0) state.data.purchases[index] = payload;
+    } else {
+      state.data.purchases.push(payload);
+    }
+
     saveData(state.data);
     state.route = { view: 'store', id: storeId };
     render();
@@ -884,7 +1238,7 @@ function renderStaffForm(storeId, editStaffId) {
     return;
   }
 
-  const stores = [...STORES].sort((a, b) => {
+  const stores = cityStores().sort((a, b) => {
     const cityCmp = getCity(a.cityId).name.localeCompare(getCity(b.cityId).name);
     if (cityCmp !== 0) return cityCmp;
     return a.name.localeCompare(b.name);
@@ -1120,6 +1474,7 @@ function showBackupReminder() {
 
 function renderSettingsView() {
   const autoBackupMode = getAutoBackupMode();
+  const showVisitedMenu = getShowVisitedMenu();
 
   app.className = '';
   app.innerHTML = `
@@ -1138,10 +1493,20 @@ function renderSettingsView() {
         </div>
       </div>
       <div class="section settings-section">
+        <div class="section-title">Display</div>
+        <div class="card settings-card">
+          <p class="data-hint">Show a quick-access menu of visited maisons under the header on the Maisons tab.</p>
+          <div class="sort-options settings-toggle-row">
+            <button type="button" class="sort-chip ${showVisitedMenu ? 'selected' : ''}" data-visited-menu="1">Show visited menu</button>
+            <button type="button" class="sort-chip ${!showVisitedMenu ? 'selected' : ''}" data-visited-menu="0">Hide</button>
+          </div>
+        </div>
+      </div>
+      <div class="section settings-section">
         <div class="section-title">Backup</div>
         <div class="card settings-card">
           <p class="data-hint backup-last-hint">${escapeHtml(getLastExportLabel())}</p>
-          <p class="data-hint">Export staff, visit history, maison photos/notes, and your brand sizes. To restore, use Import from file below.</p>
+          <p class="data-hint">Export staff, visits, purchases, custom maisons, photos/notes, and your brand sizes. To restore, use Import from file below.</p>
           <button class="btn btn-secondary full-width" id="export-btn" type="button">Export to file</button>
           <label class="btn btn-secondary full-width import-label">
             Import from file
@@ -1161,7 +1526,7 @@ function renderSettingsView() {
       <div class="section">
         <div class="section-title">Sample data</div>
         <div class="card settings-card">
-          <p class="data-hint">Replace all staff, visits, and demo sizes with built-in sample data.</p>
+          <p class="data-hint">Replace all staff, visits, purchases, custom maisons, and demo sizes with built-in sample data.</p>
           <button class="btn btn-delete full-width" id="reset-btn" type="button">Reset sample data</button>
         </div>
       </div>
@@ -1176,6 +1541,13 @@ function renderSettingsView() {
   app.querySelectorAll('[data-auto-backup]').forEach((chip) => {
     chip.addEventListener('click', () => {
       setAutoBackupMode(chip.dataset.autoBackup);
+      renderSettingsView();
+    });
+  });
+
+  app.querySelectorAll('[data-visited-menu]').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      setShowVisitedMenu(chip.dataset.visitedMenu === '1');
       renderSettingsView();
     });
   });
