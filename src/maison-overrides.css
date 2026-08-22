@@ -1,0 +1,52 @@
+/* Maison Journal — brand accents on Tableside frame */
+
+.brand-icon-hermes {
+  background: linear-gradient(145deg, #8b4513, #f97316);
+}
+
+.brand-icon-omega {
+  background: linear-gradient(145deg, #7f1d1d, #ef4444);
+}
+
+.brand-icon-chanel {
+  background: linear-gradient(145deg, #27272a, #fafafa);
+  color: #1a1410;
+}
+
+.brand-badge {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 0.5px solid var(--border-warm);
+  background: var(--accent-soft);
+  color: var(--accent-light);
+}
+
+.role-badge {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(10, 132, 255, 0.16);
+  color: #64b5ff;
+}
+
+.role-badge.manager {
+  background: rgba(191, 90, 242, 0.16);
+  color: #bf5af2;
+}
+
+.role-badge.director {
+  background: rgba(212, 160, 84, 0.2);
+  color: var(--accent-light);
+}
+
+.detail-subtitle {
+  text-align: center;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  font-size: 0.9rem;
+}
