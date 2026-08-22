@@ -1918,6 +1918,12 @@ button.list-hero-stat {
   height: 100px;
 }
 
+.photo-preview.purchase-photo-preview {
+  width: 140px;
+  height: 140px;
+  border-radius: 18px;
+}
+
 .photo-preview img {
   width: 100%;
   height: 100%;
