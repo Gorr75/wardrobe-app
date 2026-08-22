@@ -713,9 +713,9 @@ function renderStoreDetail(storeId) {
         </div>
         ${
           storePurchases.length
-            ? `<div class="purchase-list">${storePurchases.map((purchase) => wrapSwipeRow(renderPurchaseCard(purchase))).join('')}</div>
-               <p class="swipe-hint">Swipe left on purchases to delete</p>`
-            : `<div class="empty-card">No purchases yet — tap Add to log an item</div>`
+            ? `<div class="card purchase-list-card"><div class="purchase-list">${storePurchases.map((purchase) => wrapSwipeRow(renderPurchaseCard(purchase))).join('')}</div></div>
+               <p class="swipe-hint">Swipe left on purchases to delete · Tap photo to add or view</p>`
+            : `<div class="empty-card">No purchases yet — tap Add to log an item with photo</div>`
         }
       </div>
 
@@ -817,8 +817,16 @@ function renderStoreDetail(storeId) {
 
   app.querySelectorAll('.purchase-list .swipe-row').forEach((row) => {
     const editBtn = row.querySelector('.edit-purchase-btn');
+    const purchaseId = editBtn?.dataset.id;
     bindSwipeRow(row, {
-      onTap: () => {
+      onTap: (e) => {
+        const photoAction = e.target.closest('[data-photo-action]');
+        if (photoAction && purchaseId) {
+          e.preventDefault();
+          e.stopPropagation();
+          handlePurchasePhotoAction(storeId, purchaseId, photoAction.dataset.photoAction);
+          return;
+        }
         if (editBtn) {
           state.route = { view: 'edit-purchase', storeId, purchaseId: editBtn.dataset.id };
           render();
@@ -1085,6 +1093,93 @@ function renderCustomStoreForm(storeId = null) {
   });
 }
 
+function handlePurchasePhotoAction(storeId, purchaseId, action) {
+  const purchase = (state.data.purchases || []).find((item) => item.id === purchaseId);
+  if (!purchase) return;
+  if (action === 'view') {
+    openPhotoLightbox(purchase.image, purchase.name);
+    return;
+  }
+  openPurchasePhotoModal(storeId, purchaseId);
+}
+
+function openPhotoLightbox(imageSrc, caption = '') {
+  if (!imageSrc) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay photo-lightbox-overlay';
+  overlay.innerHTML = `
+    <div class="photo-lightbox" role="dialog" aria-modal="true">
+      ${caption ? `<p class="photo-lightbox-caption">${escapeHtml(caption)}</p>` : ''}
+      <img class="photo-lightbox-image" src="${escapeHtml(imageSrc)}" alt="${escapeHtml(caption || 'Purchase photo')}" />
+      <button type="button" class="btn btn-secondary full-width" id="photo-lightbox-close">Close</button>
+    </div>`;
+  const close = () => {
+    overlay.remove();
+    document.body.style.overflow = '';
+  };
+  document.body.style.overflow = 'hidden';
+  document.body.appendChild(overlay);
+  overlay.querySelector('#photo-lightbox-close')?.addEventListener('click', close);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) close();
+  });
+}
+
+function openPurchasePhotoModal(storeId, purchaseId) {
+  const purchase = (state.data.purchases || []).find((item) => item.id === purchaseId);
+  if (!purchase) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true">
+      <h2>${purchase.image ? 'Change photo' : 'Add photo'}</h2>
+      <p class="modal-text">${escapeHtml(purchase.name)}</p>
+      <div id="purchase-photo-picker-root">
+        ${photoPickerMarkup({
+          previewImage: purchase.image || '',
+          placeholder: 'Add item photo',
+          placeholderClass: 'purchase-photo-preview',
+        })}
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary modal-btn" id="purchase-photo-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary modal-btn" id="purchase-photo-save">Save photo</button>
+      </div>
+    </div>`;
+
+  const modal = overlay.querySelector('.modal');
+  const pickerRoot = overlay.querySelector('#purchase-photo-picker-root');
+  const photoPicker = bindPhotoPicker(pickerRoot, {
+    initialImage: purchase.image || '',
+    placeholder: 'Add item photo',
+  });
+
+  const close = () => {
+    overlay.remove();
+    document.body.style.overflow = '';
+  };
+
+  document.body.style.overflow = 'hidden';
+  document.body.appendChild(overlay);
+  modal.addEventListener('click', (e) => e.stopPropagation());
+  overlay.querySelector('#purchase-photo-cancel')?.addEventListener('click', close);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) close();
+  });
+  overlay.querySelector('#purchase-photo-save')?.addEventListener('click', () => {
+    const index = state.data.purchases.findIndex((item) => item.id === purchaseId);
+    if (index < 0) return;
+    state.data.purchases[index] = normalizePurchase({
+      ...state.data.purchases[index],
+      image: photoPicker.getImagePayload(purchase.image || ''),
+    });
+    saveData(state.data);
+    close();
+    renderStoreDetail(storeId);
+  });
+}
+
 function renderPurchaseForm(storeId, purchaseId = null) {
   const store = findStore(storeId);
   if (!store) {
@@ -1115,8 +1210,9 @@ function renderPurchaseForm(storeId, purchaseId = null) {
           ${photoPickerMarkup({
             previewImage: purchase?.image || '',
             placeholder: 'Add item photo',
-            placeholderClass: 'staff-photo-preview',
+            placeholderClass: 'purchase-photo-preview',
           })}
+          <p class="field-hint">Take a photo or choose from your library</p>
         </div>
         <div class="field">
           <label for="purchase-name">Name</label>

@@ -142,32 +142,63 @@
   margin-top: 8px;
 }
 
+.purchase-list-card {
+  padding: 12px 14px;
+}
+
 .purchase-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 
 .purchase-card {
   display: flex;
-  gap: 12px;
+  gap: 14px;
   align-items: flex-start;
 }
 
-.purchase-thumb {
-  width: 56px;
-  height: 56px;
-  border-radius: 12px;
-  object-fit: cover;
+.purchase-thumb-btn {
+  border: 0.5px solid var(--border-warm);
+  background: var(--bg-elevated);
+  padding: 0;
+  border-radius: 14px;
   flex-shrink: 0;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.purchase-thumb-btn:active {
+  opacity: 0.85;
+}
+
+.purchase-thumb {
+  width: 72px;
+  height: 72px;
+  border-radius: 14px;
+  object-fit: cover;
+  display: block;
 }
 
 .purchase-thumb-empty {
+  width: 72px;
+  height: 72px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: var(--bg-elevated);
-  font-size: 1.2rem;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.purchase-thumb-icon {
+  font-size: 1.25rem;
+}
+
+.purchase-thumb-label {
+  font-weight: 600;
 }
 
 .purchase-body {
@@ -191,8 +222,42 @@
   margin-top: 2px;
 }
 
+.purchase-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 6px;
+}
+
 .purchase-store-hint {
   margin: 0 0 12px;
+}
+
+.photo-lightbox-overlay {
+  align-items: center;
+  justify-content: center;
+}
+
+.photo-lightbox {
+  width: min(92vw, 420px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.photo-lightbox-image {
+  width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  border-radius: 16px;
+  background: var(--bg-secondary);
+}
+
+.photo-lightbox-caption {
+  margin: 0;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
 }
 
 .form-actions .btn-delete {

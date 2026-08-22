@@ -27,18 +27,25 @@ export function formatPurchaseDate(ts) {
 
 export function renderPurchaseCard(purchase) {
   const metaParts = [purchase.size, purchase.price].filter(Boolean);
+  const photoHtml = purchase.image
+    ? `<button type="button" class="purchase-thumb-btn" data-photo-action="view" aria-label="View item photo">
+        ${imageTagMarkup('purchase-thumb', purchase.image)}
+      </button>`
+    : `<button type="button" class="purchase-thumb-btn purchase-thumb-empty" data-photo-action="add" aria-label="Add item photo">
+        <span class="purchase-thumb-icon" aria-hidden="true">📷</span>
+        <span class="purchase-thumb-label">Add photo</span>
+      </button>`;
   return `
     <div class="purchase-card" data-purchase-id="${escapeHtml(purchase.id)}">
-      ${
-        purchase.image
-          ? imageTagMarkup('purchase-thumb', purchase.image)
-          : `<div class="purchase-thumb purchase-thumb-empty" aria-hidden="true">🛍</div>`
-      }
+      ${photoHtml}
       <div class="purchase-body">
         <div class="purchase-name">${escapeHtml(purchase.name)}</div>
         ${metaParts.length ? `<div class="purchase-meta">${escapeHtml(metaParts.join(' · '))}</div>` : ''}
         <div class="purchase-date">${escapeHtml(formatPurchaseDate(purchase.purchasedAt))}</div>
-        <button type="button" class="btn-text edit-purchase-btn" data-id="${escapeHtml(purchase.id)}">Edit</button>
+        <div class="purchase-actions">
+          ${purchase.image ? `<button type="button" class="btn-text purchase-photo-btn" data-photo-action="change">Change photo</button>` : ''}
+          <button type="button" class="btn-text edit-purchase-btn" data-id="${escapeHtml(purchase.id)}">Edit</button>
+        </div>
       </div>
     </div>`;
 }
