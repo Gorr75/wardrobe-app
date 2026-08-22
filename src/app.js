@@ -10,9 +10,14 @@ import {
   listHeroMarkup,
 } from './frame.js';
 import {
+  BRAND_SIZE_FIELDS,
+  getBrandSizeSummary,
+} from './brands.js';
+import {
   destroyMap,
   initStoreMap,
   mapLegendMarkup,
+  openAppleMaps,
   showNavigationPicker,
 } from './maps.js';
 import {
@@ -44,8 +49,14 @@ import {
   setStaffSort,
 } from './staff.js';
 import {
+  bindPhotoPicker,
+  photoPickerMarkup,
+  renderStoreThumb,
+} from './photos.js';
+import {
   createId,
   getLastVisitAt,
+  getStoreMeta,
   getVisitsForStore,
   loadData,
   loadHomeTab,
@@ -54,6 +65,7 @@ import {
   saveData,
   saveHomeTab,
   saveSelectedCity,
+  setStoreMeta,
 } from './store.js';
 
 const SWIPE_DELETE_WIDTH = 88;
@@ -131,6 +143,9 @@ async function render() {
       break;
     case 'edit-staff':
       renderStaffForm(null, state.route.staffId);
+      break;
+    case 'edit-store':
+      renderStoreEdit(state.route.id);
       break;
     case 'data':
       renderSettingsView();
@@ -347,10 +362,14 @@ function buildListBody({ stores, query, isStaffMode, isMapMode }) {
         .map((store) => {
           const lastVisit = getLastVisitAt(state.data.visits, store.id);
           const staffCount = state.data.staff.filter((m) => m.storeId === store.id).length;
+          const meta = getStoreMeta(state.data, store.id);
+          const thumb = meta.image
+            ? renderStoreThumb(meta.image, store.brand, '', brandIconClass(store.brand))
+            : `<div class="restaurant-icon ${brandIconClass(store.brand)}">${brandInitial(store.brand)}</div>`;
           return `
         <li>
           <div class="card restaurant-card" data-store-id="${store.id}">
-            <div class="restaurant-icon ${brandIconClass(store.brand)}">${brandInitial(store.brand)}</div>
+            ${thumb}
             <div class="info">
               <div class="title">${escapeHtml(store.name)}</div>
               <div class="subtitle">${escapeHtml(store.brand)} · ${escapeHtml(store.address.split(',')[0])}</div>
@@ -550,9 +569,11 @@ function renderStoreDetail(storeId) {
     return;
   }
 
+  const meta = getStoreMeta(state.data, storeId);
   const storeStaff = state.data.staff.filter((m) => m.storeId === storeId);
   const storeVisits = getVisitsForStore(state.data.visits, storeId);
   const lastVisitAt = storeVisits[0]?.at || null;
+  const sizeSummary = getBrandSizeSummary(state.data.brandSizes, store.brand);
 
   app.className = '';
   app.innerHTML = `
@@ -562,17 +583,48 @@ function renderStoreDetail(storeId) {
     </header>
     <main class="content detail-content">
       <div class="detail-hero">
-        <div class="restaurant-icon detail-photo ${brandIconClass(store.brand)}" style="width:96px;height:96px;font-size:2rem;border-radius:22px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">${brandInitial(store.brand)}</div>
+        ${renderStoreThumb(meta.image, store.brand, 'detail-photo', brandIconClass(store.brand))}
         <h2 class="detail-title">${escapeHtml(store.name)}</h2>
         <p class="detail-subtitle">${escapeHtml(store.brand)} · ${escapeHtml(getCity(store.cityId).name)}</p>
       </div>
+
       <div class="section">
-        <div class="section-title">Address</div>
+        <div class="section-title">Details</div>
         <div class="card">
-          <button type="button" class="address-btn" id="directions-btn">${escapeHtml(store.address)}</button>
-          <button class="btn btn-secondary full-width detail-maps-btn" id="open-maps-btn" type="button" style="margin-top:8px;">Open in Apple Maps</button>
+          <button class="address-btn" id="address-nav" type="button">
+            <span class="label">Address</span>
+            <span class="address-value">${escapeHtml(store.address)}</span>
+            <span class="address-hint">Tap for Apple Maps or Uber</span>
+          </button>
+          <button class="btn btn-secondary full-width detail-maps-btn" id="open-apple-maps-btn" type="button">Open in Apple Maps</button>
+          ${
+            meta.note
+              ? `
+          <div class="note-block">
+            <span class="label">Note</span>
+            <p class="restaurant-note">${escapeHtml(meta.note)}</p>
+          </div>`
+              : `
+          <div class="card-row">
+            <span class="label">Note</span>
+            <span class="value muted">No note</span>
+          </div>`
+          }
+        </div>
+        <button class="btn btn-primary full-width" id="edit-store-btn" type="button">Edit maison</button>
+      </div>
+
+      <div class="section">
+        <div class="section-header-row">
+          <div class="section-title">My ${escapeHtml(store.brand)} sizes</div>
+          <button type="button" class="btn-text" id="edit-brand-sizes">Edit</button>
+        </div>
+        <div class="card">
+          <p class="data-hint size-brand-hint">Same at every ${escapeHtml(store.brand)} boutique</p>
+          <p class="brand-size-summary">${sizeSummary ? escapeHtml(sizeSummary) : '<span class="muted">No sizes yet</span>'}</p>
         </div>
       </div>
+
       <div class="section">
         <div class="section-title">Staff</div>
         <div class="staff-actions">
@@ -585,6 +637,7 @@ function renderStoreDetail(storeId) {
                <p class="swipe-hint">Swipe left on staff to delete</p>`
         }
       </div>
+
       <div class="section">
         <div class="section-title">Last visit</div>
         <div class="card visit-card">
@@ -631,8 +684,13 @@ function renderStoreDetail(storeId) {
     state.route = { view: 'list' };
     render();
   });
-  app.querySelector('#directions-btn')?.addEventListener('click', () => showNavigationPicker(store));
-  app.querySelector('#open-maps-btn')?.addEventListener('click', () => showNavigationPicker(store));
+  app.querySelector('#address-nav')?.addEventListener('click', () => showNavigationPicker(store));
+  app.querySelector('#open-apple-maps-btn')?.addEventListener('click', () => openAppleMaps(store));
+  app.querySelector('#edit-store-btn')?.addEventListener('click', () => {
+    state.route = { view: 'edit-store', id: storeId };
+    render();
+  });
+  app.querySelector('#edit-brand-sizes')?.addEventListener('click', () => openBrandSizesModal(store.brand, storeId));
   app.querySelector('#add-staff-btn')?.addEventListener('click', () => {
     state.route = { view: 'add-staff', storeId };
     render();
@@ -676,6 +734,117 @@ function renderStoreDetail(storeId) {
   });
 }
 
+function renderStoreEdit(storeId) {
+  const store = STORES.find((s) => s.id === storeId);
+  if (!store) {
+    state.route = { view: 'list' };
+    render();
+    return;
+  }
+
+  const meta = getStoreMeta(state.data, storeId);
+
+  app.className = '';
+  app.innerHTML = `
+    <header class="header">
+      <button class="back-btn" id="cancel-btn" type="button" aria-label="Back">‹</button>
+      <h1>Edit maison</h1>
+    </header>
+    <main class="content">
+      <form class="form" id="store-form">
+        <div class="field">
+          <label>Photo</label>
+          ${photoPickerMarkup({
+            previewImage: meta.image,
+            placeholder: 'Add maison photo',
+            placeholderClass: 'staff-photo-preview',
+          })}
+        </div>
+        <div class="field">
+          <label for="store-note">Note</label>
+          <textarea id="store-note" placeholder="Your notes about this boutique">${escapeHtml(meta.note || '')}</textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" id="cancel-form">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </main>
+  `;
+
+  const formRoot = app.querySelector('#store-form');
+  const photoPicker = bindPhotoPicker(formRoot, {
+    initialImage: meta.image,
+    placeholder: 'Add maison photo',
+  });
+
+  const cancel = () => {
+    state.route = { view: 'store', id: storeId };
+    render();
+  };
+
+  app.querySelector('#cancel-btn')?.addEventListener('click', cancel);
+  app.querySelector('#cancel-form')?.addEventListener('click', cancel);
+  app.querySelector('#store-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    setStoreMeta(state.data, storeId, {
+      image: photoPicker.getImagePayload(meta.image),
+      note: app.querySelector('#store-note')?.value.trim() || '',
+    });
+    saveData(state.data);
+    state.route = { view: 'store', id: storeId };
+    render();
+  });
+}
+
+function openBrandSizesModal(brand, returnStoreId) {
+  const sizes = { ...(state.data.brandSizes?.[brand] || {}) };
+  const fields = BRAND_SIZE_FIELDS[brand] || [];
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal" role="dialog">
+      <h2>My ${escapeHtml(brand)} sizes</h2>
+      <p class="modal-text">These apply at every ${escapeHtml(brand)} boutique.</p>
+      <form class="form" id="sizes-form">
+        ${fields
+          .map(
+            (field) => `
+          <div class="field">
+            <label>${escapeHtml(field.label)}${field.unit ? ` (${escapeHtml(field.unit)})` : ''}</label>
+            <input name="${field.key}" value="${escapeHtml(sizes[field.key] || '')}" placeholder="${escapeHtml(field.placeholder)}" />
+          </div>`,
+          )
+          .join('')}
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="sizes-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>`;
+
+  overlay.querySelector('#sizes-cancel')?.addEventListener('click', () => overlay.remove());
+  overlay.querySelector('#sizes-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const form = e.target;
+    if (!state.data.brandSizes) state.data.brandSizes = {};
+    const next = {};
+    for (const field of fields) {
+      const value = form[field.key]?.value.trim();
+      if (value) next[field.key] = value;
+    }
+    state.data.brandSizes[brand] = next;
+    saveData(state.data);
+    overlay.remove();
+    if (returnStoreId) renderStoreDetail(returnStoreId);
+  });
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+  document.body.appendChild(overlay);
+}
+
 function renderStaffForm(storeId, editStaffId) {
   const isEdit = !!editStaffId;
   let member = isEdit ? byId(state.data.staff, editStaffId) : null;
@@ -709,6 +878,14 @@ function renderStaffForm(storeId, editStaffId) {
     </header>
     <main class="content">
       <form class="form" id="staff-form">
+        <div class="field">
+          <label>Photo</label>
+          ${photoPickerMarkup({
+            previewImage: member?.image || '',
+            placeholder: 'Add staff photo',
+            placeholderClass: 'staff-photo-preview',
+          })}
+        </div>
         <div class="field">
           <label for="staff-store">Maison</label>
           <select id="staff-store" class="field-select" required>
@@ -763,6 +940,11 @@ function renderStaffForm(storeId, editStaffId) {
   const roleInput = app.querySelector('#role');
   const storeSelect = app.querySelector('#staff-store');
   const saveBtn = app.querySelector('#save-btn');
+  const formRoot = app.querySelector('#staff-form');
+  const photoPicker = bindPhotoPicker(formRoot, {
+    initialImage: member?.image || '',
+    placeholder: 'Add staff photo',
+  });
 
   function updatePresetHighlight() {
     const current = roleInput.value.trim();
@@ -822,7 +1004,7 @@ function renderStaffForm(storeId, editStaffId) {
       email: app.querySelector('#email').value.trim(),
       instagram: app.querySelector('#staff-instagram').value.trim(),
       note: app.querySelector('#note').value.trim(),
-      image: member?.image || '',
+      image: photoPicker.getImagePayload(member?.image || ''),
     });
     if (isEdit) {
       Object.assign(member, payload);
@@ -917,7 +1099,7 @@ function renderSettingsView() {
         <div class="section-title">Backup</div>
         <div class="card settings-card">
           <p class="data-hint backup-last-hint">${escapeHtml(getLastExportLabel())}</p>
-          <p class="data-hint">Export staff contacts and visit history across all cities. To restore, use Import from file below.</p>
+          <p class="data-hint">Export staff, visit history, maison photos/notes, and your brand sizes. To restore, use Import from file below.</p>
           <button class="btn btn-secondary full-width" id="export-btn" type="button">Export to file</button>
           <label class="btn btn-secondary full-width import-label">
             Import from file
@@ -937,7 +1119,7 @@ function renderSettingsView() {
       <div class="section">
         <div class="section-title">Sample data</div>
         <div class="card settings-card">
-          <p class="data-hint">Replace all staff and visits with demo data.</p>
+          <p class="data-hint">Replace all staff, visits, and demo sizes with built-in sample data.</p>
           <button class="btn btn-delete full-width" id="reset-btn" type="button">Reset sample data</button>
         </div>
       </div>
@@ -965,7 +1147,7 @@ function renderSettingsView() {
     if (!file) return;
     confirmAction(
       'Replace all data?',
-      'This replaces all staff and visits with the backup file. Export first if you need a copy of current data.',
+      'This replaces all staff, visits, photos, notes, and sizes with the backup file. Export first if you need a copy of current data.',
       async () => {
         try {
           state.data = await importAllData(file);
