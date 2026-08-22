@@ -200,8 +200,9 @@ async function renderList() {
   const isMapMode = state.homeTab === 'map';
   const isStoresMode = state.homeTab === 'stores';
   const query = state.listSearch.toLowerCase().trim();
-  const stats = !isStaffMode && !isMapMode ? statsForCity() : null;
-  const visitedMenuStores = isStoresMode && getShowVisitedMenu() ? visitedStoresForMenu() : [];
+  const showHeaderStats = getShowVisitedMenu();
+  const stats = showHeaderStats && !isStaffMode && !isMapMode ? statsForCity() : null;
+  const visitedMenuStores = showHeaderStats && isStoresMode ? visitedStoresForMenu() : [];
   const listBodyHtml = buildListBody({ stores, query, isStaffMode, isMapMode });
 
   app.className = 'has-home-tabs';
@@ -1495,9 +1496,9 @@ function renderSettingsView() {
       <div class="section settings-section">
         <div class="section-title">Display</div>
         <div class="card settings-card">
-          <p class="data-hint">Show a quick-access menu of visited maisons under the header on the Maisons tab.</p>
+          <p class="data-hint">Show the top stats bar (Visited, Staff, Visits, Maisons) and quick shortcuts to visited maisons on the Maisons tab. Hide to save space.</p>
           <div class="sort-options settings-toggle-row">
-            <button type="button" class="sort-chip ${showVisitedMenu ? 'selected' : ''}" data-visited-menu="1">Show visited menu</button>
+            <button type="button" class="sort-chip ${showVisitedMenu ? 'selected' : ''}" data-visited-menu="1">Show</button>
             <button type="button" class="sort-chip ${!showVisitedMenu ? 'selected' : ''}" data-visited-menu="0">Hide</button>
           </div>
         </div>
