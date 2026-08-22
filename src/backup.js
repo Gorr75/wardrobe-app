@@ -13,15 +13,7 @@ function todayDateString() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function normalizeData(parsed) {
-  const creators = parsed.creators ?? parsed.clients;
-  const staff = parsed.staff;
-  const entries = parsed.entries ?? parsed.journal;
-  if (!Array.isArray(creators) || !Array.isArray(staff) || !Array.isArray(entries)) {
-    throw new Error('Invalid backup format');
-  }
-  return { creators, staff, entries };
-}
+import { normalizeImportedData } from './store.js';
 
 export function formatBackupDate(ts) {
   return new Date(ts).toLocaleDateString(undefined, {
@@ -50,10 +42,8 @@ export function setAutoBackupMode(mode) {
 export function buildBackupPayload(data) {
   return {
     app: 'maison-journal',
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
-    creators: data.creators,
-    staff: data.staff,
     entries: data.entries,
   };
 }
@@ -98,7 +88,7 @@ export async function importAllData(file) {
   } catch {
     throw new Error('Could not parse JSON file');
   }
-  return normalizeData(parsed);
+  return normalizeImportedData(parsed);
 }
 
 export async function maybeAutoExport(data, trigger) {

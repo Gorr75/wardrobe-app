@@ -1,5 +1,5 @@
-import { BRAND_SIZE_FIELDS, BRANDS, ENTRY_TYPES, STAFF_ROLES, getBrandSizeSummary } from './brands.js';
-import { CITIES, getCity, getStoreByBrand, getStoresForCity, STORES } from './cities.js';
+import { BRANDS, ENTRY_TYPES } from './brands.js';
+import { CITIES, getCity, getStoresForCity, STORES } from './cities.js';
 import {
   bindChromeAutoHide,
   brandIconClass,
@@ -8,7 +8,6 @@ import {
   escapeHtml,
   homeTabsMarkup,
   listHeroMarkup,
-  roleBadgeClass,
 } from './frame.js';
 import {
   destroyMap,
@@ -34,7 +33,6 @@ import {
   filterByCity,
   loadData,
   loadSelectedCity,
-  newCreator,
   resetToSeed,
   saveData,
   saveSelectedCity,
@@ -46,10 +44,7 @@ const state = {
   homeTab: 'stores',
   listSearch: '',
   route: { view: 'list' },
-  editingCreator: null,
-  editingStaff: null,
   editingEntry: null,
-  sizeBrand: 'Hermès',
 };
 
 const app = document.getElementById('app');
@@ -63,8 +58,6 @@ function cityContext() {
   return {
     city,
     stores: getStoresForCity(state.cityId),
-    creators: filterByCity(state.data.creators, state.cityId),
-    staff: filterByCity(state.data.staff, state.cityId),
     entries: filterByCity(state.data.entries, state.cityId),
   };
 }
@@ -78,12 +71,10 @@ function formatDate(value) {
   });
 }
 
-function statsForCity({ stores, creators, staff, entries }) {
+function statsForCity({ stores, entries }) {
   return {
     stores: stores.length,
-    creators: creators.length,
     entries: entries.length,
-    staff: staff.length,
   };
 }
 
@@ -110,11 +101,11 @@ async function render() {
 async function renderList() {
   await checkWeeklyAutoBackup(state.data);
 
-  const { city, stores, creators, staff, entries } = cityContext();
+  const { city, stores, entries } = cityContext();
   const isMapMode = state.homeTab === 'map';
   const query = state.listSearch.toLowerCase().trim();
-  const stats = statsForCity({ stores, creators, staff, entries });
-  const listBodyHtml = buildListBody({ stores, creators, staff, entries, query, isMapMode });
+  const stats = statsForCity({ stores, entries });
+  const listBodyHtml = buildListBody({ stores, entries, query, isMapMode });
 
   app.className = 'has-home-tabs';
   app.classList.remove('chrome-hidden');
@@ -181,7 +172,7 @@ async function renderList() {
   }
 }
 
-function buildListBody({ stores, creators, staff, entries, query, isMapMode }) {
+function buildListBody({ stores, entries, query, isMapMode }) {
   if (isMapMode) {
     return `
       ${mapLegendMarkup()}
@@ -230,43 +221,9 @@ function buildListBody({ stores, creators, staff, entries, query, isMapMode }) {
       </ul>`;
   }
 
-  if (state.homeTab === 'creators') {
-    const filtered = creators.filter((c) =>
-      matchesSearch(`${c.name} ${c.neighborhood} ${c.brands.join(' ')}`, query),
-    );
-    return `
-      ${cityFilter}
-      <div class="section-header">
-        <span class="section-title">Creators</span>
-        <button type="button" class="add-staff-btn" data-add-creator>+ Add</button>
-      </div>
-      ${
-        filtered.length
-          ? `<ul class="list">${filtered
-              .map(
-                (c) => `
-            <li>
-              <div class="card restaurant-card" data-creator-id="${c.id}">
-                <div class="restaurant-icon brand-icon-chanel">${escapeHtml(c.name.charAt(0))}</div>
-                <div class="info">
-                  <div class="title">${escapeHtml(c.name)}</div>
-                  <div class="subtitle">${escapeHtml(c.neighborhood)} · ${escapeHtml(c.brands.join(', '))}</div>
-                </div>
-                <span class="chevron">›</span>
-              </div>
-            </li>`,
-              )
-              .join('')}</ul>`
-          : `<div class="empty-state"><div class="icon">✨</div><h2>No creators</h2><p>Add your first creator in ${escapeHtml(getCity(state.cityId).name)}.</p></div>`
-      }`;
-  }
-
   if (state.homeTab === 'journal') {
     const filtered = entries
-      .filter((e) => {
-        const creator = byId(creators, e.creatorId);
-        return matchesSearch(`${e.brand} ${e.type} ${e.notes} ${creator?.name || ''}`, query);
-      })
+      .filter((e) => matchesSearch(`${e.brand} ${e.type} ${e.notes}`, query))
       .sort((a, b) => new Date(b.date) - new Date(a.date));
     return `
       ${cityFilter}
@@ -277,52 +234,22 @@ function buildListBody({ stores, creators, staff, entries, query, isMapMode }) {
       ${
         filtered.length
           ? `<ul class="list">${filtered
-              .map((e) => {
-                const creator = byId(creators, e.creatorId);
-                const member = byId(staff, e.staffId);
-                return `
+              .map(
+                (e) => `
             <li>
               <div class="card restaurant-card" data-entry-id="${e.id}">
+                <div class="restaurant-icon ${brandIconClass(e.brand)}">${brandInitial(e.brand)}</div>
                 <div class="info">
-                  <div class="title">${creator ? escapeHtml(creator.name) : 'Unknown'}</div>
-                  <div class="subtitle">${formatDate(e.date)} · ${escapeHtml(e.brand)} · ${escapeHtml(e.type)}</div>
-                  ${member ? `<div class="staff-item note">${escapeHtml(member.name)} · ${escapeHtml(member.role)}</div>` : ''}
+                  <div class="title">${escapeHtml(e.brand)} · ${escapeHtml(e.type)}</div>
+                  <div class="subtitle">${formatDate(e.date)}</div>
+                  ${e.notes ? `<div class="staff-item note">${escapeHtml(e.notes)}</div>` : ''}
                 </div>
                 <span class="chevron">›</span>
               </div>
-            </li>`;
-              })
-              .join('')}</ul>`
-          : `<div class="empty-state"><div class="icon">📓</div><h2>No entries</h2><p>Log a client interaction.</p></div>`
-      }`;
-  }
-
-  if (state.homeTab === 'staff') {
-    const filtered = staff.filter((m) =>
-      matchesSearch(`${m.name} ${m.role} ${m.boutique}`, query),
-    );
-    return `
-      ${cityFilter}
-      <div class="section-header">
-        <span class="section-title">Team</span>
-        <button type="button" class="add-staff-btn" data-add-staff>+ Add</button>
-      </div>
-      ${
-        filtered.length
-          ? `<div class="card">${filtered
-              .map(
-                (m) => `
-              <div class="staff-item" data-staff-id="${m.id}">
-                <div class="info">
-                  <div class="name">${escapeHtml(m.name)}</div>
-                  <div class="role"><span class="role-badge ${roleBadgeClass(m.role)}">${escapeHtml(m.role)}</span></div>
-                  <div class="note">${escapeHtml(m.boutique)}</div>
-                </div>
-                <span class="chevron">›</span>
-              </div>`,
+            </li>`,
               )
-              .join('')}</div>`
-          : `<div class="empty-state"><div class="icon">👔</div><h2>No team members</h2><p>Add sales associates and managers.</p></div>`
+              .join('')}</ul>`
+          : `<div class="empty-state"><div class="icon">📓</div><h2>No entries</h2><p>Log a visit, fitting, or follow-up.</p></div>`
       }`;
   }
 
@@ -349,32 +276,6 @@ function bindListBodyEvents() {
     });
   });
 
-  app.querySelector('[data-add-creator]')?.addEventListener('click', () => {
-    state.editingCreator = 'new';
-    state.sizeBrand = 'Hermès';
-    openCreatorModal();
-  });
-
-  app.querySelectorAll('[data-creator-id]').forEach((el) => {
-    el.addEventListener('click', () => {
-      state.editingCreator = byId(state.data.creators, el.dataset.creatorId);
-      state.sizeBrand = state.editingCreator?.brands?.[0] ?? 'Hermès';
-      openCreatorModal();
-    });
-  });
-
-  app.querySelector('[data-add-staff]')?.addEventListener('click', () => {
-    state.editingStaff = 'new';
-    openStaffModal();
-  });
-
-  app.querySelectorAll('[data-staff-id]').forEach((el) => {
-    el.addEventListener('click', () => {
-      state.editingStaff = byId(state.data.staff, el.dataset.staffId);
-      openStaffModal();
-    });
-  });
-
   app.querySelector('[data-add-entry]')?.addEventListener('click', () => {
     state.editingEntry = 'new';
     openEntryModal();
@@ -396,7 +297,7 @@ function renderStoreDetail(storeId) {
     return;
   }
 
-  const { creators, staff, entries } = cityContext();
+  const { entries } = cityContext();
   const relatedEntries = entries.filter((e) => e.brand === store.brand);
 
   app.className = '';
@@ -418,7 +319,7 @@ function renderStoreDetail(storeId) {
         </div>
       </div>
       <div class="section">
-        <div class="section-title">Journal (${relatedEntries.length})</div>
+        <div class="section-title">Your journal (${relatedEntries.length})</div>
         <div class="card">
           ${
             relatedEntries.length
@@ -435,25 +336,7 @@ function renderStoreDetail(storeId) {
               : '<p class="data-hint" style="padding:14px 16px;">No journal entries for this maison yet.</p>'
           }
         </div>
-      </div>
-      <div class="section">
-        <div class="section-title">Creators in ${escapeHtml(getCity(store.cityId).name)}</div>
-        <div class="card">
-          ${
-            creators.filter((c) => c.brands.includes(store.brand)).length
-              ? creators
-                  .filter((c) => c.brands.includes(store.brand))
-                  .map(
-                    (c) => `
-              <div class="card-row">
-                <span class="label">${escapeHtml(c.name)}</span>
-                <span class="value">${escapeHtml(c.neighborhood)}</span>
-              </div>`,
-                  )
-                  .join('')
-              : '<p class="data-hint" style="padding:14px 16px;">No creators linked to this maison.</p>'
-          }
-        </div>
+        <button type="button" class="btn btn-secondary full-width" id="add-entry-btn" style="margin-top:8px;">+ Add entry</button>
       </div>
     </main>
   `;
@@ -463,6 +346,11 @@ function renderStoreDetail(storeId) {
     render();
   });
   app.querySelector('#directions-btn')?.addEventListener('click', () => showNavigationPicker(store));
+  app.querySelector('#add-entry-btn')?.addEventListener('click', () => {
+    state.editingEntry = 'new';
+    state.prefillBrand = store.brand;
+    openEntryModal();
+  });
 }
 
 function confirmAction(title, message, onConfirm, confirmLabel = 'Confirm') {
@@ -505,7 +393,7 @@ function showBackupReminder() {
   overlay.innerHTML = `
     <div class="modal" role="dialog" aria-modal="true">
       <h2>Time for a backup?</h2>
-      <p class="modal-text">You have not exported a backup in over ${BACKUP_REMINDER_DAYS} days. Save one to protect your client and journal data.</p>
+      <p class="modal-text">You have not exported a backup in over ${BACKUP_REMINDER_DAYS} days. Save one to protect your journal.</p>
       <div class="modal-actions">
         <button class="btn btn-secondary modal-btn" id="reminder-later" type="button">Remind me later</button>
         <button class="btn btn-primary modal-btn" id="reminder-export" type="button">Export now</button>
@@ -546,7 +434,7 @@ function renderSettingsView() {
         <div class="section-title">Backup</div>
         <div class="card settings-card">
           <p class="data-hint backup-last-hint">${escapeHtml(getLastExportLabel())}</p>
-          <p class="data-hint">Export a JSON backup of all cities — creators, team, and journal entries. To restore, use Import from file below.</p>
+          <p class="data-hint">Export a JSON backup of your journal entries across all cities. To restore, use Import from file below.</p>
           <button class="btn btn-secondary full-width" id="export-btn" type="button">Export to file</button>
           <label class="btn btn-secondary full-width import-label">
             Import from file
@@ -566,7 +454,7 @@ function renderSettingsView() {
       <div class="section">
         <div class="section-title">Sample data</div>
         <div class="card settings-card">
-          <p class="data-hint">Replace all data with the built-in demo creators, team, and journal entries.</p>
+          <p class="data-hint">Replace all entries with a few demo journal notes.</p>
           <button class="btn btn-delete full-width" id="reset-btn" type="button">Reset sample data</button>
         </div>
       </div>
@@ -594,7 +482,7 @@ function renderSettingsView() {
     if (!file) return;
     confirmAction(
       'Replace all data?',
-      'This replaces all creators, team members, and journal entries with the backup file. Export first if you need a copy of current data.',
+      'This replaces all journal entries with the backup file. Export first if you need a copy of current data.',
       async () => {
         try {
           state.data = await importAllData(file);
@@ -614,7 +502,7 @@ function renderSettingsView() {
   app.querySelector('#reset-btn')?.addEventListener('click', () => {
     confirmAction(
       'Reset sample data?',
-      'This permanently replaces all creators, team members, and journal entries with the built-in demo data.',
+      'This permanently replaces all journal entries with the built-in demo notes.',
       async () => {
         state.data = resetToSeed();
         saveData(state.data);
@@ -626,124 +514,12 @@ function renderSettingsView() {
   });
 }
 
-function openCreatorModal() {
-  const creator = state.editingCreator === 'new' ? newCreator(state.cityId) : state.editingCreator;
-  const isNew = state.editingCreator === 'new';
-  const neighborhoods = getCity(state.cityId).neighborhoods;
-  const cityStaff = filterByCity(state.data.staff, state.cityId);
-
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
-  overlay.innerHTML = `
-    <div class="modal" role="dialog">
-      <h2>${isNew ? 'Add creator' : 'Edit creator'}</h2>
-      <form class="form" id="creator-form">
-        <div class="field"><label>Name</label><input name="name" required value="${escapeHtml(creator.name)}" /></div>
-        <div class="field"><label>Neighborhood</label>
-          <select name="neighborhood">${neighborhoods.map((n) => `<option ${creator.neighborhood === n ? 'selected' : ''}>${n}</option>`).join('')}</select>
-        </div>
-        <div class="field"><label>Maisons</label>
-          ${BRANDS.map((b) => `<label style="display:flex;gap:8px;margin:4px 0;"><input type="checkbox" name="brands" value="${b}" ${creator.brands.includes(b) ? 'checked' : ''} /> ${b}</label>`).join('')}
-        </div>
-        <div class="field"><label>Primary associate</label>
-          <select name="primaryAssociateId"><option value="">Unassigned</option>${cityStaff.map((m) => `<option value="${m.id}" ${creator.primaryAssociateId === m.id ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}</select>
-        </div>
-        <div class="field"><label>Notes</label><textarea name="notes">${escapeHtml(creator.notes || '')}</textarea></div>
-        <div class="modal-actions">
-          <button type="button" class="btn btn-secondary" id="cancel-btn">Cancel</button>
-          <button type="submit" class="btn btn-primary">Save</button>
-        </div>
-      </form>
-    </div>`;
-
-  overlay.querySelector('#cancel-btn')?.addEventListener('click', () => {
-    state.editingCreator = null;
-    overlay.remove();
-  });
-  overlay.querySelector('#creator-form')?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const form = e.target;
-    const payload = {
-      cityId: state.cityId,
-      name: form.name.value.trim(),
-      neighborhood: form.neighborhood.value,
-      tags: [],
-      brands: [...form.querySelectorAll('input[name="brands"]:checked')].map((i) => i.value),
-      brandSizes: creator.brandSizes || { Hermès: {}, Omega: {}, Chanel: {} },
-      notes: form.notes.value.trim(),
-      primaryAssociateId: form.primaryAssociateId.value,
-    };
-    if (isNew) state.data.creators.push({ id: createId('creator'), ...payload });
-    else Object.assign(state.editingCreator, payload);
-    saveData(state.data);
-    state.editingCreator = null;
-    overlay.remove();
-    render();
-  });
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) overlay.remove();
-  });
-  document.body.appendChild(overlay);
-}
-
-function openStaffModal() {
-  const member = state.editingStaff === 'new' ? null : state.editingStaff;
-  const isNew = !member;
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
-  overlay.innerHTML = `
-    <div class="modal" role="dialog">
-      <h2>${isNew ? 'Add team member' : 'Edit team member'}</h2>
-      <form class="form" id="staff-form">
-        <div class="field"><label>Name</label><input name="name" required value="${escapeHtml(member?.name || '')}" /></div>
-        <div class="field"><label>Role</label>
-          <select name="role">${STAFF_ROLES.map((r) => `<option ${member?.role === r ? 'selected' : ''}>${r}</option>`).join('')}</select>
-        </div>
-        <div class="field"><label>Boutique</label>
-          <select name="boutique">${BRANDS.map((b) => {
-            const store = getStoreByBrand(state.cityId, b);
-            const label = store ? `${b} — ${store.address.split(',')[0]}` : b;
-            return `<option ${member?.boutique?.startsWith(b) ? 'selected' : ''}>${escapeHtml(label)}</option>`;
-          }).join('')}</select>
-        </div>
-        <div class="modal-actions">
-          <button type="button" class="btn btn-secondary" id="cancel-btn">Cancel</button>
-          <button type="submit" class="btn btn-primary">Save</button>
-        </div>
-      </form>
-    </div>`;
-
-  overlay.querySelector('#cancel-btn')?.addEventListener('click', () => {
-    state.editingStaff = null;
-    overlay.remove();
-  });
-  overlay.querySelector('#staff-form')?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const form = e.target;
-    const payload = {
-      cityId: state.cityId,
-      name: form.name.value.trim(),
-      role: form.role.value,
-      boutique: form.boutique.value,
-      brands: BRANDS.filter((b) => form.boutique.value.startsWith(b)),
-    };
-    if (isNew) state.data.staff.push({ id: createId('staff'), ...payload });
-    else Object.assign(state.editingStaff, payload);
-    saveData(state.data);
-    state.editingStaff = null;
-    overlay.remove();
-    render();
-  });
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) overlay.remove();
-  });
-  document.body.appendChild(overlay);
-}
-
 function openEntryModal() {
   const entry = state.editingEntry === 'new' ? null : state.editingEntry;
   const isNew = !entry;
-  const { creators, staff } = cityContext();
+  const defaultBrand = state.prefillBrand || entry?.brand || 'Hermès';
+  state.prefillBrand = null;
+
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
@@ -751,11 +527,10 @@ function openEntryModal() {
       <h2>${isNew ? 'New journal entry' : 'Edit entry'}</h2>
       <form class="form" id="entry-form">
         <div class="field"><label>Date</label><input name="date" type="datetime-local" required value="${entry ? toLocalInput(entry.date) : toLocalInput(new Date())}" /></div>
-        <div class="field"><label>Creator</label><select name="creatorId" required><option value="">Select</option>${creators.map((c) => `<option value="${c.id}" ${entry?.creatorId === c.id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}</select></div>
-        <div class="field"><label>Team member</label><select name="staffId" required><option value="">Select</option>${staff.map((m) => `<option value="${m.id}" ${entry?.staffId === m.id ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}</select></div>
-        <div class="field"><label>Maison</label><select name="brand">${BRANDS.map((b) => `<option ${entry?.brand === b ? 'selected' : ''}>${b}</option>`).join('')}</select></div>
+        <div class="field"><label>Maison</label><select name="brand">${BRANDS.map((b) => `<option ${defaultBrand === b ? 'selected' : ''}>${b}</option>`).join('')}</select></div>
         <div class="field"><label>Type</label><select name="type">${ENTRY_TYPES.map((t) => `<option ${entry?.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
         <div class="field"><label>Notes</label><textarea name="notes" required>${escapeHtml(entry?.notes || '')}</textarea></div>
+        <div class="field"><label>Follow-up (optional)</label><input name="followUpDate" type="date" value="${escapeHtml(entry?.followUpDate || '')}" /></div>
         <div class="modal-actions">
           <button type="button" class="btn btn-secondary" id="cancel-btn">Cancel</button>
           <button type="submit" class="btn btn-primary">Save</button>
@@ -773,12 +548,10 @@ function openEntryModal() {
     const payload = {
       cityId: state.cityId,
       date: new Date(form.date.value).toISOString(),
-      creatorId: form.creatorId.value,
-      staffId: form.staffId.value,
       brand: form.brand.value,
       type: form.type.value,
       notes: form.notes.value.trim(),
-      followUpDate: null,
+      followUpDate: form.followUpDate.value || null,
     };
     if (isNew) state.data.entries.push({ id: createId('entry'), ...payload });
     else Object.assign(state.editingEntry, payload);

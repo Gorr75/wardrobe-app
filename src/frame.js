@@ -53,9 +53,7 @@ export function bindChromeAutoHide(app) {
 export function homeTabsMarkup(homeTab) {
   const tabs = [
     { id: 'stores', label: 'Maisons', icon: '🏛️' },
-    { id: 'creators', label: 'Creators', icon: '✨' },
     { id: 'journal', label: 'Journal', icon: '📓' },
-    { id: 'staff', label: 'Team', icon: '👔' },
     { id: 'map', label: 'Map', icon: '🗺️' },
   ];
   return `
@@ -83,16 +81,8 @@ export function listHeroMarkup(stats) {
           <span class="list-hero-unit">Maisons</span>
         </div>
         <div class="list-hero-stat">
-          <span class="list-hero-value">${stats.creators}</span>
-          <span class="list-hero-unit">Creators</span>
-        </div>
-        <div class="list-hero-stat">
           <span class="list-hero-value">${stats.entries}</span>
           <span class="list-hero-unit">Journal</span>
-        </div>
-        <div class="list-hero-stat">
-          <span class="list-hero-value">${stats.staff}</span>
-          <span class="list-hero-unit">Team</span>
         </div>
       </div>
     </div>`;
@@ -125,8 +115,3 @@ export function brandInitial(brand) {
   return 'C';
 }
 
-export function roleBadgeClass(role) {
-  if (role.includes('Director') || role.includes('Manager')) return 'manager';
-  if (role.includes('Senior')) return 'director';
-  return '';
-}
