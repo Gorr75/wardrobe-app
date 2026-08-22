@@ -10,7 +10,7 @@ Each city has three maisons with map pins and directions:
 
 | City | Hermès | Omega | Chanel |
 |------|--------|-------|--------|
-| Stockholm | Birger Jarlsgatan | Biblioteksgatan | Hamngatan |
+| Stockholm | Hamngatan (NK) | Biblioteksgatan 3 | Birger Jarlsgatan 7 |
 | Copenhagen | Amagertorv | Østergade | Store Kongensgade |
 | London | New Bond Street | Old Bond Street | New Bond Street |
 | Paris | Faubourg Saint-Honoré | Rue François 1er | Rue Cambon |
