@@ -1,4 +1,6 @@
+import { getStoreInstagramHandle, getStoreInstagramLabel } from './cities.js';
 import { escapeHtml } from './frame.js';
+import { formatInstagramUrl } from './staff.js';
 
 let mapInstance = null;
 let storeMarkers = [];
@@ -38,6 +40,33 @@ export function openUber(store) {
   openNavigation(uberUrl(store));
 }
 
+export function storeNavActionsMarkup() {
+  return `
+    <div class="store-nav-actions">
+      <button type="button" class="btn btn-primary full-width map-apple-btn">Apple Maps</button>
+      <button type="button" class="btn btn-secondary full-width map-uber-btn uber-btn">Uber</button>
+    </div>`;
+}
+
+export function storeInstagramMarkup(store) {
+  const handle = getStoreInstagramHandle(store);
+  if (!handle) return '';
+  const label = getStoreInstagramLabel(store);
+  return `
+    <a class="map-callout-instagram contact-link" href="${escapeHtml(formatInstagramUrl(handle))}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`;
+}
+
+export function bindStoreNavActions(container, store) {
+  container.querySelector('.map-apple-btn')?.addEventListener('click', (event) => {
+    event.stopPropagation();
+    openAppleMaps(store);
+  });
+  container.querySelector('.map-uber-btn')?.addEventListener('click', (event) => {
+    event.stopPropagation();
+    openUber(store);
+  });
+}
+
 function createMapIcon(color) {
   return window.L.divIcon({
     className: 'map-pin-wrap',
@@ -56,7 +85,7 @@ export function destroyMap() {
   }
 }
 
-export function initStoreMap(stores, city, onOpenStore) {
+export function initStoreMap(stores, city) {
   if (typeof window.L === 'undefined') return;
   const container = document.getElementById('restaurant-map');
   if (!container) return;
@@ -97,17 +126,10 @@ export function initStoreMap(stores, city, onOpenStore) {
       <div class="map-callout-name">${escapeHtml(store.name)}</div>
       <div class="map-callout-address">${escapeHtml(store.address)}</div>
       <div class="map-callout-status"><span class="map-legend-dot" style="background:${BRAND_COLORS[store.brand]}"></span> ${escapeHtml(store.brand)}</div>
-      <button type="button" class="btn btn-primary full-width map-details-btn">View boutique</button>
-      <button type="button" class="btn btn-secondary full-width map-directions-btn">Get directions</button>
+      ${storeInstagramMarkup(store)}
+      ${storeNavActionsMarkup()}
     `;
-    popup.querySelector('.map-details-btn')?.addEventListener('click', () => {
-      mapInstance?.closePopup();
-      onOpenStore?.(store.id);
-    });
-    popup.querySelector('.map-directions-btn')?.addEventListener('click', () => {
-      mapInstance?.closePopup();
-      showNavigationPicker(store);
-    });
+    bindStoreNavActions(popup, store);
     marker.bindPopup(popup, {
       className: 'map-popup',
       maxWidth: 260,
@@ -151,48 +173,6 @@ function locateUser(stores) {
     },
     { enableHighAccuracy: true, timeout: 10000 },
   );
-}
-
-export function showNavigationPicker(store) {
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
-  overlay.innerHTML = `
-    <div class="modal" role="dialog" aria-modal="true">
-      <h2>Get directions</h2>
-      <p class="modal-text">${escapeHtml(store.address)}</p>
-      <div class="nav-actions">
-        <button class="btn btn-primary full-width nav-btn" id="open-maps" type="button">Apple Maps</button>
-        <button class="btn btn-secondary full-width nav-btn uber-btn" id="open-uber" type="button">Uber</button>
-        <button class="btn btn-secondary full-width nav-btn" id="nav-cancel" type="button">Cancel</button>
-      </div>
-    </div>
-  `;
-
-  const modal = overlay.querySelector('.modal');
-  const uberBtn = overlay.querySelector('#open-uber');
-  const close = () => {
-    overlay.remove();
-    document.body.style.overflow = '';
-  };
-
-  document.body.style.overflow = 'hidden';
-  document.body.appendChild(overlay);
-  modal.addEventListener('click', (e) => e.stopPropagation());
-
-  overlay.querySelector('#open-maps')?.addEventListener('click', () => {
-    openAppleMaps(store);
-    close();
-  });
-
-  uberBtn?.addEventListener('click', () => {
-    openUber(store);
-    close();
-  });
-
-  overlay.querySelector('#nav-cancel')?.addEventListener('click', close);
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) close();
-  });
 }
 
 export function mapLegendMarkup() {

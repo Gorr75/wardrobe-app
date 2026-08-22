@@ -1,4 +1,4 @@
-import { ALL_CITIES_MAP, CITIES, getCity, getStoresForFilter, STORES } from './cities.js';
+import { ALL_CITIES_MAP, CITIES, getCity, getStoreInstagramLabel, getStoresForFilter, STORES } from './cities.js';
 import {
   bindChromeAutoHide,
   brandIconClass,
@@ -14,11 +14,11 @@ import {
   getBrandSizeSummary,
 } from './brands.js';
 import {
+  bindStoreNavActions,
   destroyMap,
   initStoreMap,
   mapLegendMarkup,
-  openAppleMaps,
-  showNavigationPicker,
+  storeNavActionsMarkup,
 } from './maps.js';
 import {
   APP_VERSION,
@@ -221,10 +221,7 @@ async function renderList() {
   });
 
   if (isMapMode) {
-    initStoreMap(stores, mapViewCity(), (storeId) => {
-      state.route = { view: 'store', id: storeId };
-      render();
-    });
+    initStoreMap(stores, mapViewCity());
   } else {
     destroyMap();
   }
@@ -597,6 +594,9 @@ function renderStoreDetail(storeId) {
   const lastVisitAt = storeVisits[0]?.at || null;
   const sizeSummary = getBrandSizeSummary(state.data.brandSizes, store.brand);
 
+  const instagramLabel = getStoreInstagramLabel(store);
+  const instagramUrl = instagramLabel ? formatInstagramUrl(instagramLabel) : '';
+
   app.className = '';
   app.innerHTML = `
     <header class="header">
@@ -613,12 +613,20 @@ function renderStoreDetail(storeId) {
       <div class="section">
         <div class="section-title">Details</div>
         <div class="card">
-          <button class="address-btn" id="address-nav" type="button">
+          <div class="address-block">
             <span class="label">Address</span>
             <span class="address-value">${escapeHtml(store.address)}</span>
-            <span class="address-hint">Tap for Apple Maps or Uber</span>
-          </button>
-          <button class="btn btn-secondary full-width detail-maps-btn" id="open-apple-maps-btn" type="button">Open in Apple Maps</button>
+          </div>
+          ${storeNavActionsMarkup()}
+          ${
+            instagramLabel
+              ? `
+          <a class="link-row link-row-instagram" href="${escapeHtml(instagramUrl)}" target="_blank" rel="noopener noreferrer">
+            <span class="label">Instagram</span>
+            <span class="link-value">${escapeHtml(instagramLabel)}</span>
+          </a>`
+              : ''
+          }
           ${
             meta.note
               ? `
@@ -702,12 +710,12 @@ function renderStoreDetail(storeId) {
     </main>
   `;
 
+  bindStoreNavActions(app.querySelector('.card'), store);
+
   app.querySelector('#back-btn')?.addEventListener('click', () => {
     state.route = { view: 'list' };
     render();
   });
-  app.querySelector('#address-nav')?.addEventListener('click', () => showNavigationPicker(store));
-  app.querySelector('#open-apple-maps-btn')?.addEventListener('click', () => openAppleMaps(store));
   app.querySelector('#edit-store-btn')?.addEventListener('click', () => {
     state.route = { view: 'edit-store', id: storeId };
     render();
