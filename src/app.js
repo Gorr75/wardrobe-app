@@ -17,10 +17,21 @@ import {
   showNavigationPicker,
 } from './maps.js';
 import {
+  APP_VERSION,
+  BACKUP_REMINDER_DAYS,
+  checkWeeklyAutoBackup,
+  dismissBackupReminder,
+  exportAllData,
+  getAutoBackupMode,
+  getLastExportLabel,
+  importAllData,
+  maybeAutoExport,
+  setAutoBackupMode,
+  shouldShowBackupReminder,
+} from './backup.js';
+import {
   createId,
-  exportData,
   filterByCity,
-  importData,
   loadData,
   loadSelectedCity,
   newCreator,
@@ -89,7 +100,7 @@ async function render() {
       renderStoreDetail(state.route.id);
       break;
     case 'data':
-      renderDataView();
+      renderSettingsView();
       break;
     default:
       await renderList();
@@ -97,6 +108,8 @@ async function render() {
 }
 
 async function renderList() {
+  await checkWeeklyAutoBackup(state.data);
+
   const { city, stores, creators, staff, entries } = cityContext();
   const isMapMode = state.homeTab === 'map';
   const query = state.listSearch.toLowerCase().trim();
@@ -162,6 +175,10 @@ async function renderList() {
 
   bindListBodyEvents();
   if (!isMapMode) bindChromeAutoHide(app);
+
+  if (shouldShowBackupReminder()) {
+    showBackupReminder();
+  }
 }
 
 function buildListBody({ stores, creators, staff, entries, query, isMapMode }) {
@@ -448,24 +465,109 @@ function renderStoreDetail(storeId) {
   app.querySelector('#directions-btn')?.addEventListener('click', () => showNavigationPicker(store));
 }
 
-function renderDataView() {
+function confirmAction(title, message, onConfirm, confirmLabel = 'Confirm') {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true">
+      <h2>${escapeHtml(title)}</h2>
+      <p class="modal-text">${escapeHtml(message)}</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary modal-btn" id="modal-cancel" type="button">Cancel</button>
+        <button class="btn btn-delete modal-btn" id="modal-confirm" type="button">${escapeHtml(confirmLabel)}</button>
+      </div>
+    </div>`;
+
+  const modal = overlay.querySelector('.modal');
+  const close = () => {
+    overlay.remove();
+    document.body.style.overflow = '';
+  };
+
+  document.body.style.overflow = 'hidden';
+  document.body.appendChild(overlay);
+  modal.addEventListener('click', (e) => e.stopPropagation());
+  overlay.querySelector('#modal-cancel')?.addEventListener('click', close);
+  overlay.querySelector('#modal-confirm')?.addEventListener('click', async () => {
+    try {
+      await onConfirm();
+      close();
+    } catch (err) {
+      alert('Something went wrong. Please try again.');
+      console.error(err);
+    }
+  });
+}
+
+function showBackupReminder() {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true">
+      <h2>Time for a backup?</h2>
+      <p class="modal-text">You have not exported a backup in over ${BACKUP_REMINDER_DAYS} days. Save one to protect your client and journal data.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary modal-btn" id="reminder-later" type="button">Remind me later</button>
+        <button class="btn btn-primary modal-btn" id="reminder-export" type="button">Export now</button>
+      </div>
+    </div>`;
+
+  const modal = overlay.querySelector('.modal');
+  const close = () => {
+    overlay.remove();
+    document.body.style.overflow = '';
+  };
+
+  document.body.style.overflow = 'hidden';
+  document.body.appendChild(overlay);
+  modal.addEventListener('click', (e) => e.stopPropagation());
+  overlay.querySelector('#reminder-later')?.addEventListener('click', () => {
+    dismissBackupReminder();
+    close();
+  });
+  overlay.querySelector('#reminder-export')?.addEventListener('click', async () => {
+    dismissBackupReminder();
+    await exportAllData(state.data);
+    close();
+  });
+}
+
+function renderSettingsView() {
+  const autoBackupMode = getAutoBackupMode();
+
   app.className = '';
   app.innerHTML = `
     <header class="header">
       <button class="back-btn" id="back-btn" type="button" aria-label="Back">‹</button>
-      <h1>Data</h1>
+      <h1>Settings <span class="version-badge">${APP_VERSION}</span></h1>
     </header>
     <main class="content">
-      <div class="section">
+      <div class="section settings-section">
         <div class="section-title">Backup</div>
         <div class="card settings-card">
-          <p class="data-hint">Export or import your maison journal data.</p>
-          <button class="btn btn-secondary full-width" id="export-btn" type="button">Export JSON</button>
-          <label class="btn btn-secondary full-width" style="display:block;text-align:center;margin-top:8px;">
-            Import JSON
-            <input type="file" accept="application/json,.json" id="import-input" hidden />
+          <p class="data-hint backup-last-hint">${escapeHtml(getLastExportLabel())}</p>
+          <p class="data-hint">Export a JSON backup of all cities — creators, team, and journal entries. To restore, use Import from file below.</p>
+          <button class="btn btn-secondary full-width" id="export-btn" type="button">Export to file</button>
+          <label class="btn btn-secondary full-width import-label">
+            Import from file
+            <input type="file" id="import-input" accept=".json,application/json" hidden />
           </label>
-          <button class="btn btn-delete full-width" id="reset-btn" type="button" style="margin-top:8px;">Reset sample data</button>
+          <div class="auto-backup-block">
+            <span class="sort-label">Auto-backup</span>
+            <div class="sort-options auto-backup-options">
+              <button type="button" class="sort-chip ${autoBackupMode === 'off' ? 'selected' : ''}" data-auto-backup="off">Off</button>
+              <button type="button" class="sort-chip ${autoBackupMode === 'weekly' ? 'selected' : ''}" data-auto-backup="weekly">Weekly</button>
+              <button type="button" class="sort-chip ${autoBackupMode === 'visit' ? 'selected' : ''}" data-auto-backup="visit">On entry</button>
+            </div>
+            <p class="data-hint auto-backup-hint">Weekly saves once per week. On entry saves when you log a journal entry. Backups download to your device.</p>
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Sample data</div>
+        <div class="card settings-card">
+          <p class="data-hint">Replace all data with the built-in demo creators, team, and journal entries.</p>
+          <button class="btn btn-delete full-width" id="reset-btn" type="button">Reset sample data</button>
         </div>
       </div>
     </main>
@@ -475,26 +577,52 @@ function renderDataView() {
     state.route = { view: 'list' };
     render();
   });
-  app.querySelector('#export-btn')?.addEventListener('click', () => exportData(state.data, state.cityId));
-  app.querySelector('#import-input')?.addEventListener('change', async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      state.data = await importData(file);
-      saveData(state.data);
-      alert('Import complete');
-    } catch (err) {
-      alert(err.message);
-    }
-    e.target.value = '';
+
+  app.querySelectorAll('[data-auto-backup]').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      setAutoBackupMode(chip.dataset.autoBackup);
+      renderSettingsView();
+    });
   });
+
+  app.querySelector('#export-btn')?.addEventListener('click', () => exportAllData(state.data));
+
+  const importInput = app.querySelector('#import-input');
+  importInput?.addEventListener('change', async () => {
+    const file = importInput.files?.[0];
+    importInput.value = '';
+    if (!file) return;
+    confirmAction(
+      'Replace all data?',
+      'This replaces all creators, team members, and journal entries with the backup file. Export first if you need a copy of current data.',
+      async () => {
+        try {
+          state.data = await importAllData(file);
+          saveData(state.data);
+          alert('Backup imported successfully.');
+          state.route = { view: 'list' };
+          render();
+        } catch (err) {
+          alert('Could not import that file. Check that it is a valid Maison Journal backup.');
+          console.error(err);
+        }
+      },
+      'Import',
+    );
+  });
+
   app.querySelector('#reset-btn')?.addEventListener('click', () => {
-    if (confirm('Reset all sample data?')) {
-      state.data = resetToSeed();
-      saveData(state.data);
-      state.route = { view: 'list' };
-      render();
-    }
+    confirmAction(
+      'Reset sample data?',
+      'This permanently replaces all creators, team members, and journal entries with the built-in demo data.',
+      async () => {
+        state.data = resetToSeed();
+        saveData(state.data);
+        state.route = { view: 'list' };
+        render();
+      },
+      'Reset',
+    );
   });
 }
 
@@ -639,7 +767,7 @@ function openEntryModal() {
     state.editingEntry = null;
     overlay.remove();
   });
-  overlay.querySelector('#entry-form')?.addEventListener('submit', (e) => {
+  overlay.querySelector('#entry-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
     const payload = {
@@ -657,6 +785,7 @@ function openEntryModal() {
     saveData(state.data);
     state.editingEntry = null;
     overlay.remove();
+    await maybeAutoExport(state.data, 'visit');
     render();
   });
   overlay.addEventListener('click', (e) => {

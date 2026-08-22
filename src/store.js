@@ -153,35 +153,6 @@ export function filterByCity(list, cityId) {
   return list.filter((item) => item.cityId === cityId);
 }
 
-export function exportData(data, cityId) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `maison-journal-${cityId}-${new Date().toISOString().slice(0, 10)}.json`;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-export function importData(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const parsed = JSON.parse(reader.result);
-        if (!Array.isArray(parsed.creators) || !Array.isArray(parsed.staff) || !Array.isArray(parsed.entries)) {
-          reject(new Error('Invalid maison journal file'));
-          return;
-        }
-        resolve(parsed);
-      } catch {
-        reject(new Error('Could not parse JSON file'));
-      }
-    };
-    reader.onerror = () => reject(new Error('Could not read file'));
-    reader.readAsText(file);
-  });
-}
 
 export function resetToSeed() {
   return defaultData();
