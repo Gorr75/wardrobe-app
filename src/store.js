@@ -1,11 +1,13 @@
 import { emptyBrandSizes, normalizeBrandSizes } from './brands.js';
-import { STORES, getStoreByBrand } from './cities.js';
+import { CITIES, getCity, getStoreByBrand, STORES } from './cities.js';
+import { normalizePurchase } from './purchases.js';
 import { normalizeStaff } from './staff.js';
 
-const STORAGE_KEY = 'maison-journal-v5';
-const LEGACY_STORAGE_KEYS = ['maison-journal-v4', 'maison-journal-v3', 'maison-journal-v2'];
+const STORAGE_KEY = 'maison-journal-v6';
+const LEGACY_STORAGE_KEYS = ['maison-journal-v5', 'maison-journal-v4', 'maison-journal-v3', 'maison-journal-v2'];
 const CITY_KEY = 'maison-journal-city';
 const HOME_TAB_KEY = 'maison-journal-home-tab';
+const VISITED_MENU_KEY = 'maison-journal-show-visited-menu';
 
 export const DEFAULT_CITY_ID = 'stockholm';
 
@@ -30,6 +32,22 @@ function normalizeStoreMeta(raw) {
     };
   }
   return meta;
+}
+
+function normalizeCustomStore(store) {
+  const cityId = store.cityId || DEFAULT_CITY_ID;
+  const city = getCity(cityId);
+  return {
+    id: store.id || createId('custom'),
+    cityId,
+    brand: store.brand || 'Other',
+    name: store.name || '',
+    address: store.address || '',
+    lat: typeof store.lat === 'number' ? store.lat : city.center.lat,
+    lng: typeof store.lng === 'number' ? store.lng : city.center.lng,
+    instagram: store.instagram || '',
+    createdAt: store.createdAt || Date.now(),
+  };
 }
 
 function entryToVisit(entry) {
@@ -96,6 +114,8 @@ function seedData() {
       Omega: { wrist: '19', case: '41' },
       Chanel: {},
     },
+    customStores: [],
+    purchases: [],
   };
 }
 
@@ -125,6 +145,8 @@ function normalizeDataModel(parsed) {
     visits,
     storeMeta: normalizeStoreMeta(parsed.storeMeta),
     brandSizes: normalizeBrandSizes(parsed.brandSizes),
+    customStores: Array.isArray(parsed.customStores) ? parsed.customStores.map(normalizeCustomStore) : [],
+    purchases: Array.isArray(parsed.purchases) ? parsed.purchases.map(normalizePurchase) : [],
   };
 }
 
@@ -150,6 +172,14 @@ export function loadHomeTab() {
 
 export function saveHomeTab(tab) {
   localStorage.setItem(HOME_TAB_KEY, tab);
+}
+
+export function getShowVisitedMenu() {
+  return localStorage.getItem(VISITED_MENU_KEY) === '1';
+}
+
+export function setShowVisitedMenu(show) {
+  localStorage.setItem(VISITED_MENU_KEY, show ? '1' : '0');
 }
 
 export function loadData() {
@@ -183,6 +213,8 @@ export function saveData(data) {
       visits: data.visits,
       storeMeta: data.storeMeta || {},
       brandSizes: data.brandSizes || emptyBrandSizes(),
+      customStores: data.customStores || [],
+      purchases: data.purchases || [],
     }),
   );
 }
@@ -212,6 +244,57 @@ export function getLastVisitAt(visits, storeId) {
   return storeVisits.length ? storeVisits[0].at : null;
 }
 
+export function getPurchasesForStore(purchases, storeId) {
+  return purchases.filter((purchase) => purchase.storeId === storeId).sort((a, b) => b.purchasedAt - a.purchasedAt);
+}
+
+export function getVisitedStores(allStores, visits, cityId = '') {
+  const visitedIds = new Set(visits.map((visit) => visit.storeId));
+  let stores = allStores.filter((store) => visitedIds.has(store.id));
+  if (cityId) stores = stores.filter((store) => store.cityId === cityId);
+  return stores.sort((a, b) => {
+    const aLast = getLastVisitAt(visits, a.id) || 0;
+    const bLast = getLastVisitAt(visits, b.id) || 0;
+    return bLast - aLast;
+  });
+}
+
+export async function geocodeAddress(address) {
+  if (!address.trim()) return null;
+  try {
+    const params = new URLSearchParams({ format: 'json', limit: '1', q: address.trim() });
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+      headers: { 'User-Agent': 'maison-journal/1.0' },
+    });
+    if (!response.ok) return null;
+    const results = await response.json();
+    if (!results?.length) return null;
+    return {
+      lat: parseFloat(results[0].lat),
+      lng: parseFloat(results[0].lon),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function upsertCustomStore(data, store, existingId = null) {
+  if (!data.customStores) data.customStores = [];
+  const normalized = normalizeCustomStore({ ...store, id: existingId || store.id || createId('custom') });
+  const index = data.customStores.findIndex((item) => item.id === normalized.id);
+  if (index >= 0) data.customStores[index] = normalized;
+  else data.customStores.push(normalized);
+  return normalized;
+}
+
+export function deleteCustomStore(data, storeId) {
+  data.customStores = (data.customStores || []).filter((store) => store.id !== storeId);
+  data.staff = data.staff.filter((member) => member.storeId !== storeId);
+  data.visits = data.visits.filter((visit) => visit.storeId !== storeId);
+  data.purchases = (data.purchases || []).filter((purchase) => purchase.storeId !== storeId);
+  if (data.storeMeta?.[storeId]) delete data.storeMeta[storeId];
+}
+
 export function resetToSeed() {
   return defaultData();
 }
@@ -221,3 +304,5 @@ export function normalizeImportedData(parsed) {
   if (!migrated) throw new Error('Invalid backup format');
   return migrated;
 }
+
+export { CITIES };

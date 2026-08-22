@@ -91,3 +91,110 @@
   margin: 0 auto 12px;
   display: block;
 }
+
+.brand-icon-custom {
+  background: linear-gradient(145deg, #3f3f46, #a1a1aa);
+}
+
+.custom-store-badge {
+  display: inline-flex;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: rgba(212, 160, 84, 0.18);
+  color: var(--accent-light);
+  vertical-align: middle;
+}
+
+.visited-stores-menu {
+  padding: 0 12px 10px;
+}
+
+.visited-stores-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.visited-store-chip {
+  flex: 0 0 auto;
+  border: 0.5px solid var(--border-warm);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.visited-store-chip:active {
+  background: var(--accent-soft);
+}
+
+.settings-toggle-row {
+  margin-top: 8px;
+}
+
+.purchase-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.purchase-card {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.purchase-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.purchase-thumb-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-elevated);
+  font-size: 1.2rem;
+}
+
+.purchase-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.purchase-name {
+  font-weight: 650;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+.purchase-meta,
+.purchase-date {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.purchase-date {
+  margin-top: 2px;
+}
+
+.purchase-store-hint {
+  margin: 0 0 12px;
+}
+
+.form-actions .btn-delete {
+  margin-right: auto;
+}
