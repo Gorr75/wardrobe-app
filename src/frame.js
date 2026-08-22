@@ -53,9 +53,7 @@ export function bindChromeAutoHide(app) {
 export function homeTabsMarkup(homeTab) {
   const tabs = [
     { id: 'stores', label: 'Maisons', icon: '🏛️' },
-    { id: 'creators', label: 'Creators', icon: '✨' },
-    { id: 'journal', label: 'Journal', icon: '📓' },
-    { id: 'staff', label: 'Team', icon: '👔' },
+    { id: 'staff', label: 'Staff', icon: '👤' },
     { id: 'map', label: 'Map', icon: '🗺️' },
   ];
   return `
@@ -79,22 +77,43 @@ export function listHeroMarkup(stats) {
     <div class="list-hero header-list-hero">
       <div class="list-hero-inner list-hero-inner-4">
         <div class="list-hero-stat">
-          <span class="list-hero-value">${stats.stores}</span>
-          <span class="list-hero-unit">Maisons</span>
-        </div>
-        <div class="list-hero-stat">
-          <span class="list-hero-value">${stats.creators}</span>
-          <span class="list-hero-unit">Creators</span>
-        </div>
-        <div class="list-hero-stat">
-          <span class="list-hero-value">${stats.entries}</span>
-          <span class="list-hero-unit">Journal</span>
+          <span class="list-hero-value">${stats.visited}</span>
+          <span class="list-hero-unit">Visited</span>
         </div>
         <div class="list-hero-stat">
           <span class="list-hero-value">${stats.staff}</span>
-          <span class="list-hero-unit">Team</span>
+          <span class="list-hero-unit">Staff</span>
+        </div>
+        <div class="list-hero-stat">
+          <span class="list-hero-value">${stats.visits}</span>
+          <span class="list-hero-unit">Visits</span>
+        </div>
+        <div class="list-hero-stat">
+          <span class="list-hero-value">${stats.stores}</span>
+          <span class="list-hero-unit">Maisons</span>
         </div>
       </div>
+    </div>`;
+}
+
+export function headerActionsMarkup({ showAdd, addLabel, addAria }) {
+  return `
+    <div class="header-actions">
+      <button type="button" class="header-action" id="settings-btn" aria-label="Settings">
+        <span class="header-action-indicator" aria-hidden="true"></span>
+        <span class="tab-icon-svg" aria-hidden="true">⚙</span>
+        <span class="header-action-label">Settings</span>
+      </button>
+      ${
+        showAdd
+          ? `
+      <button type="button" class="header-action header-action-add" id="add-btn" aria-label="${escapeHtml(addAria)}">
+        <span class="header-action-indicator" aria-hidden="true"></span>
+        <span class="tab-icon-svg" aria-hidden="true">＋</span>
+        <span class="header-action-label">${escapeHtml(addLabel)}</span>
+      </button>`
+          : ''
+      }
     </div>`;
 }
 
@@ -125,8 +144,3 @@ export function brandInitial(brand) {
   return 'C';
 }
 
-export function roleBadgeClass(role) {
-  if (role.includes('Director') || role.includes('Manager')) return 'manager';
-  if (role.includes('Senior')) return 'director';
-  return '';
-}
