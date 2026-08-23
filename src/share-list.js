@@ -137,7 +137,8 @@ export function importSharedList(data, payload) {
 }
 
 export function getShareScopeStores(data, scope, cityId = '') {
-  let stores = [...STORES, ...(data.customStores || [])];
+  const hidden = new Set(data.hiddenStoreIds || []);
+  let stores = [...STORES, ...(data.customStores || [])].filter((store) => !hidden.has(store.id));
   if (scope === 'city' && cityId) {
     stores = stores.filter((store) => store.cityId === cityId);
   }

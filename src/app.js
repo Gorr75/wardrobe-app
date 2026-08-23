@@ -60,6 +60,7 @@ import { normalizePurchase, renderPurchaseCard } from './purchases.js';
 import {
   createId,
   deleteCustomStore,
+  deleteStaff,
   DEFAULT_CITY_ID,
   emptyData,
   geocodeAddress,
@@ -75,6 +76,7 @@ import {
   loadSelectedCity,
   markFirstRunComplete,
   resetToSeed,
+  removeBoutiqueFromJournal,
   saveData,
   saveHomeTab,
   saveSelectedCity,
@@ -90,7 +92,8 @@ import {
   importSharedList,
 } from './share-list.js';
 
-const SWIPE_DELETE_WIDTH = 88;
+const SWIPE_DELETE_WIDTH = 80;
+const SWIPE_VISIT_WIDTH = 80;
 
 const state = {
   data: loadData(),
@@ -109,7 +112,8 @@ function byId(list, id) {
 }
 
 function cityStores() {
-  return getStoresForFilter(state.cityId, state.data.customStores || []);
+  const hidden = new Set(state.data.hiddenStoreIds || []);
+  return getStoresForFilter(state.cityId, state.data.customStores || []).filter((store) => !hidden.has(store.id));
 }
 
 function findStore(storeId) {
@@ -431,7 +435,8 @@ function buildListBody({ stores, query, isStaffMode, isMapMode }) {
           const customBadge = isCustomStore(store) ? `<span class="custom-store-badge">Custom</span>` : '';
           return `
         <li>
-          <div class="card restaurant-card" data-store-id="${store.id}">
+          ${wrapSwipeRow(`
+          <div class="restaurant-card" data-store-id="${store.id}">
             ${thumb}
             <div class="info">
               <div class="title">${escapeHtml(store.name)} ${customBadge}</div>
@@ -440,20 +445,27 @@ function buildListBody({ stores, query, isStaffMode, isMapMode }) {
             </div>
             <span class="chevron">›</span>
           </div>
+          `, { showVisit: true })}
         </li>`;
         })
         .join('')}
-    </ul>`;
+    </ul>
+    <p class="swipe-hint">Swipe left to log a visit or delete</p>`;
 }
 
-function wrapSwipeRow(contentHtml) {
+function wrapSwipeRow(contentHtml, { showVisit = false } = {}) {
   return `
-    <div class="swipe-row" data-swipe-actions="delete">
+    <div class="swipe-row" data-swipe-actions="${showVisit ? 'visit-delete' : 'delete'}">
       <div class="swipe-behind">
+        ${showVisit ? `<button class="swipe-visit-btn" type="button">Visit</button>` : ''}
         <button class="swipe-delete-btn" type="button">Delete</button>
       </div>
       <div class="swipe-front">${contentHtml}</div>
     </div>`;
+}
+
+function swipeRevealWidth(row) {
+  return row?.dataset?.swipeActions === 'visit-delete' ? SWIPE_DELETE_WIDTH + SWIPE_VISIT_WIDTH : SWIPE_DELETE_WIDTH;
 }
 
 let openSwipeRow = null;
@@ -467,10 +479,12 @@ function closeAllSwipes() {
   openSwipeRow = null;
 }
 
-function bindSwipeRow(row, { onTap, onDelete }) {
+function bindSwipeRow(row, { onTap, onDelete, onVisit }) {
   const front = row.querySelector('.swipe-front');
   const deleteBtn = row.querySelector('.swipe-delete-btn');
+  const visitBtn = row.querySelector('.swipe-visit-btn');
   if (!front || !deleteBtn) return;
+  const revealWidth = swipeRevealWidth(row);
 
   let startX = 0;
   let baseOffset = 0;
@@ -482,13 +496,19 @@ function bindSwipeRow(row, { onTap, onDelete }) {
     onDelete();
   });
 
+  visitBtn?.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    closeAllSwipes();
+    if (onVisit) await onVisit();
+  });
+
   front.addEventListener(
     'touchstart',
     (e) => {
       if (e.touches.length !== 1) return;
       if (openSwipeRow && openSwipeRow !== row) closeAllSwipes();
       startX = e.touches[0].clientX;
-      baseOffset = row.classList.contains('open') ? -SWIPE_DELETE_WIDTH : 0;
+      baseOffset = row.classList.contains('open') ? -revealWidth : 0;
       dragging = true;
     },
     { passive: true },
@@ -501,7 +521,7 @@ function bindSwipeRow(row, { onTap, onDelete }) {
       const delta = e.touches[0].clientX - startX;
       let offset = baseOffset + delta;
       if (offset > 0) offset = 0;
-      if (offset < -SWIPE_DELETE_WIDTH) offset = -SWIPE_DELETE_WIDTH;
+      if (offset < -revealWidth) offset = -revealWidth;
       row.classList.toggle('is-swiping', offset < 0);
       front.style.transform = `translateX(${offset}px)`;
     },
@@ -514,11 +534,11 @@ function bindSwipeRow(row, { onTap, onDelete }) {
     row.classList.remove('is-swiping');
     const match = front.style.transform.match(/-?\d+/);
     const offset = match ? parseInt(match[0], 10) : 0;
-    if (offset < -SWIPE_DELETE_WIDTH / 2) {
+    if (offset < -revealWidth / 2) {
       closeAllSwipes();
       row.classList.add('open');
       openSwipeRow = row;
-      front.style.transform = `translateX(-${SWIPE_DELETE_WIDTH}px)`;
+      front.style.transform = `translateX(-${revealWidth}px)`;
     } else {
       row.classList.remove('open');
       front.style.transform = '';
@@ -532,7 +552,10 @@ function bindSwipeRow(row, { onTap, onDelete }) {
       closeAllSwipes();
       return;
     }
-    onTap(e);
+    if (e.target.closest('a, .call-btn, .staff-restaurant-link, .swipe-visit-btn, .edit-staff-btn, .edit-purchase-btn, [data-photo-action]')) {
+      return;
+    }
+    if (onTap) onTap(e);
   });
 }
 
@@ -563,31 +586,62 @@ function refreshListBody() {
 }
 
 function bindListBodyEvents() {
-  app.querySelectorAll('[data-store-id]').forEach((el) => {
-    if (el.closest('.staff-browse-card')) return;
-    el.addEventListener('click', () => {
-      state.route = { view: 'store', id: el.dataset.storeId };
-      render();
+  if (state.homeTab === 'staff') {
+    app.querySelectorAll('.staff-browse-list .swipe-row').forEach((row) => {
+      const card = row.querySelector('.staff-browse-card');
+      if (!card) return;
+      const staffId = card.dataset.staffId;
+      const memberName = card.querySelector('.title')?.textContent?.trim() || 'staff';
+      bindSwipeRow(row, {
+        onTap: () => {
+          state.route = { view: 'edit-staff', staffId };
+          render();
+        },
+        onDelete: () => {
+          confirmAction(
+            `Delete ${memberName}?`,
+            'This cannot be undone.',
+            async () => {
+              deleteStaff(state.data, staffId);
+              saveData(state.data);
+              refreshListBody();
+            },
+          );
+        },
+      });
     });
-  });
-
-  app.querySelectorAll('.staff-browse-card[data-staff-id]').forEach((el) => {
-    const row = el.closest('.swipe-row');
-    if (!row) return;
-    bindSwipeRow(row, {
-      onTap: () => {
-        state.route = { view: 'edit-staff', staffId: el.dataset.staffId };
-        render();
-      },
-      onDelete: () => {
-        confirmAction('Delete staff?', 'Remove this contact from your journal.', async () => {
-          state.data.staff = state.data.staff.filter((m) => m.id !== el.dataset.staffId);
-          saveData(state.data);
+  } else {
+    app.querySelectorAll('.list .swipe-row').forEach((row) => {
+      const card = row.querySelector('.restaurant-card[data-store-id]');
+      if (!card) return;
+      const storeId = card.dataset.storeId;
+      const store = findStore(storeId);
+      if (!store) return;
+      bindSwipeRow(row, {
+        onTap: () => {
+          state.route = { view: 'store', id: storeId };
+          render();
+        },
+        onVisit: async () => {
+          logVisit(storeId, '');
+          await maybeAutoExport(state.data, 'visit');
           refreshListBody();
-        });
-      },
+        },
+        onDelete: () => {
+          const isCustom = isCustomStore(store);
+          confirmAction(
+            isCustom ? `Delete ${store.name}?` : `Remove ${store.name}?`,
+            'This removes the boutique and all linked staff, visits, and purchases.',
+            async () => {
+              removeBoutiqueFromJournal(state.data, storeId, { isCustom });
+              saveData(state.data);
+              refreshListBody();
+            },
+          );
+        },
+      });
     });
-  });
+  }
 
   app.querySelectorAll('.staff-restaurant-link').forEach((btn) => {
     btn.addEventListener('click', (e) => {
@@ -814,6 +868,7 @@ function renderStoreDetail(storeId) {
 
   app.querySelectorAll('.staff-list .swipe-row').forEach((row) => {
     const editBtn = row.querySelector('.edit-staff-btn');
+    const memberName = row.querySelector('.contact-name')?.textContent?.trim() || 'staff';
     bindSwipeRow(row, {
       onTap: () => {
         if (editBtn) {
@@ -824,8 +879,8 @@ function renderStoreDetail(storeId) {
       onDelete: () => {
         const id = editBtn?.dataset.id;
         if (!id) return;
-        confirmAction('Delete staff?', 'Remove this contact from your journal.', async () => {
-          state.data.staff = state.data.staff.filter((m) => m.id !== id);
+        confirmAction(`Delete ${memberName}?`, 'This cannot be undone.', async () => {
+          deleteStaff(state.data, id);
           saveData(state.data);
           renderStoreDetail(storeId);
         });
