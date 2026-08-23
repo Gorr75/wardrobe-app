@@ -49,6 +49,51 @@ export const CITIES = [
   },
 ];
 
+const EXTENDED_BRANDS = ['Cartier', 'Rolex', 'Dior', 'Tiffany', 'Louis Vuitton', 'YSL'];
+
+const EXTENDED_STREETS = {
+  stockholm: ['Biblioteksgatan 5', 'Birger Jarlsgatan 9', 'Hamngatan 22', 'Norrmalmstorg 1', 'Mäster Samuelsgatan 6', 'Grev Turegatan 8'],
+  copenhagen: ['Amagertorv 6', 'Østergade 18', 'Kongens Nytorv 13', 'Strøget 47', 'Illum, Østergade 52', 'Ny Østergade 12'],
+  london: ['175 New Bond Street', '40 Conduit Street', '30 Old Bond Street', '25 Old Bond Street', '17 New Bond Street', '32 Sloane Street'],
+  paris: ['13 Rue de la Paix', '101 Avenue des Champs-Élysées', '30 Avenue Montaigne', '62 Rue de Rivoli', '2 Rue de Castiglione', '24 Rue du Faubourg Saint-Honoré'],
+  dubai: ['The Dubai Mall, Downtown Dubai', 'Mall of the Emirates', 'City Walk, Al Safa Street', 'The Dubai Mall, Fashion Avenue', 'Mall of the Emirates, Level 1', 'DIFC Gate Village'],
+  oslo: ['Karl Johans gate 22', 'Karl Johans gate 31', 'Tollbugata 2', 'Dronning Eufemias gate 16', 'Karl Johans gate 25', 'Nedre Slottsgate 8'],
+};
+
+function brandSlug(brand) {
+  return brand.toLowerCase().replace(/\s+/g, '-');
+}
+
+function offsetCoords(city, index, total) {
+  const angle = (index / total) * Math.PI * 2;
+  const radius = 0.0025 + index * 0.00015;
+  return {
+    lat: city.center.lat + Math.cos(angle) * radius,
+    lng: city.center.lng + Math.sin(angle) * radius,
+  };
+}
+
+function buildExtendedStores() {
+  const stores = [];
+  for (const city of CITIES) {
+    const streets = EXTENDED_STREETS[city.id] || [];
+    EXTENDED_BRANDS.forEach((brand, index) => {
+      const street = streets[index] || `${city.name} city centre`;
+      const coords = offsetCoords(city, index, EXTENDED_BRANDS.length);
+      stores.push({
+        id: `${city.id}-${brandSlug(brand)}`,
+        cityId: city.id,
+        brand,
+        name: `${brand} ${city.name}`,
+        address: `${street}, ${city.name}`,
+        lat: coords.lat,
+        lng: coords.lng,
+      });
+    });
+  }
+  return stores;
+}
+
 export const STORES = [
   {
     id: 'stockholm-hermes',
@@ -212,6 +257,7 @@ export const STORES = [
     lat: 59.9115,
     lng: 10.746,
   },
+  ...buildExtendedStores(),
 ];
 
 export function getCity(cityId) {
@@ -227,6 +273,12 @@ export const BRAND_INSTAGRAM = {
   Hermès: 'hermes',
   Omega: 'omega',
   Chanel: 'chanel',
+  Cartier: 'cartier',
+  Rolex: 'rolex',
+  Dior: 'dior',
+  Tiffany: 'tiffanyandco',
+  'Louis Vuitton': 'louisvuitton',
+  YSL: 'ysl',
 };
 
 export function getStoreInstagramHandle(store) {

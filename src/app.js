@@ -61,6 +61,7 @@ import {
   createId,
   deleteCustomStore,
   DEFAULT_CITY_ID,
+  emptyData,
   geocodeAddress,
   getLastVisitAt,
   getPurchasesForStore,
@@ -68,9 +69,11 @@ import {
   getStoreMeta,
   getVisitedStores,
   getVisitsForStore,
+  isFirstRunPending,
   loadData,
   loadHomeTab,
   loadSelectedCity,
+  markFirstRunComplete,
   resetToSeed,
   saveData,
   saveHomeTab,
@@ -79,6 +82,13 @@ import {
   setStoreMeta,
   upsertCustomStore,
 } from './store.js';
+import { shareBoutique } from './share.js';
+import {
+  buildShareListPayload,
+  exportShareListFile,
+  getShareScopeStores,
+  importSharedList,
+} from './share-list.js';
 
 const SWIPE_DELETE_WIDTH = 88;
 
@@ -281,6 +291,10 @@ async function renderList() {
 
   if (shouldShowBackupReminder()) {
     showBackupReminder();
+  }
+
+  if (isFirstRunPending()) {
+    showFirstRunWelcome();
   }
 }
 
@@ -688,6 +702,7 @@ function renderStoreDetail(storeId) {
           }
         </div>
         <button class="btn btn-primary full-width" id="edit-store-btn" type="button">${isCustomStore(store) ? 'Edit boutique' : 'Edit photo & note'}</button>
+        <button class="btn btn-secondary full-width" id="share-boutique-btn" type="button">Share boutique</button>
       </div>
 
       ${
@@ -783,6 +798,9 @@ function renderStoreDetail(storeId) {
   app.querySelector('#edit-store-btn')?.addEventListener('click', () => {
     state.route = { view: 'edit-store', id: storeId };
     render();
+  });
+  app.querySelector('#share-boutique-btn')?.addEventListener('click', () => {
+    shareBoutique(store, meta, state.data.staff, state.data.visits);
   });
   app.querySelector('#edit-brand-sizes')?.addEventListener('click', () => openBrandSizesModal(store.brand, storeId));
   app.querySelector('#add-purchase-btn')?.addEventListener('click', () => {
@@ -1536,6 +1554,67 @@ function confirmAction(title, message, onConfirm, confirmLabel = 'Confirm') {
   });
 }
 
+function showFirstRunWelcome() {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal onboarding-modal" role="dialog" aria-modal="true">
+      <h2>Welcome to Boutique Journal</h2>
+      <p class="modal-text">Your personal luxury boutique journal. Everything stays on this device.</p>
+      <ul class="onboarding-list">
+        <li>Browse ${STORES.length} boutiques across 6 cities</li>
+        <li>Track staff, visits, purchases, and notes</li>
+        <li>Share boutique lists with friends (optional)</li>
+      </ul>
+      <div class="modal-actions">
+        <button class="btn btn-secondary modal-btn" id="first-run-empty" type="button">Start empty</button>
+        <button class="btn btn-primary modal-btn" id="first-run-sample" type="button">Load sample journal</button>
+      </div>
+      <label class="btn btn-secondary full-width import-label first-run-import">
+        Import backup file
+        <input type="file" id="first-run-import" accept=".json,application/json" hidden />
+      </label>
+    </div>`;
+
+  const modal = overlay.querySelector('.modal');
+  const close = () => {
+    overlay.remove();
+    document.body.style.overflow = '';
+  };
+
+  const finish = (data) => {
+    state.data = data;
+    saveData(state.data);
+    markFirstRunComplete();
+    close();
+    render();
+  };
+
+  document.body.style.overflow = 'hidden';
+  document.body.appendChild(overlay);
+  modal.addEventListener('click', (e) => e.stopPropagation());
+
+  overlay.querySelector('#first-run-empty')?.addEventListener('click', () => {
+    finish(emptyData());
+  });
+
+  overlay.querySelector('#first-run-sample')?.addEventListener('click', () => {
+    finish(resetToSeed());
+  });
+
+  overlay.querySelector('#first-run-import')?.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      finish(await importAllData(file));
+    } catch (err) {
+      alert('Could not import that backup file.');
+      console.error(err);
+    }
+  });
+}
+
 function showBackupReminder() {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
@@ -1600,6 +1679,29 @@ function renderSettingsView() {
         </div>
       </div>
       <div class="section settings-section">
+        <div class="section-title">Share lists</div>
+        <div class="card settings-card">
+          <p class="data-hint">Share boutique lists as JSON files — names, addresses, and notes only (no staff, visits, or purchases).</p>
+          <div class="share-list-scope">
+            <label class="sort-label" for="share-list-scope">Scope</label>
+            <select id="share-list-scope" class="city-filter-select">
+              <option value="all">All boutiques</option>
+              <option value="city" ${state.cityId ? 'selected' : ''}>Filtered city${state.cityId ? ` (${escapeHtml(getCity(state.cityId).name)})` : ''}</option>
+              <option value="visited">Visited only</option>
+            </select>
+          </div>
+          <div class="field share-list-name-field">
+            <label for="share-list-name">List name</label>
+            <input id="share-list-name" type="text" value="My boutique list" />
+          </div>
+          <button class="btn btn-secondary full-width" id="share-list-export" type="button">Share boutique list</button>
+          <label class="btn btn-secondary full-width import-label">
+            Import shared list
+            <input type="file" id="share-list-import" accept=".json,application/json" hidden />
+          </label>
+        </div>
+      </div>
+      <div class="section settings-section">
         <div class="section-title">Backup</div>
         <div class="card settings-card">
           <p class="data-hint backup-last-hint">${escapeHtml(getLastExportLabel())}</p>
@@ -1650,6 +1752,41 @@ function renderSettingsView() {
   });
 
   app.querySelector('#export-btn')?.addEventListener('click', () => exportAllData(state.data));
+
+  app.querySelector('#share-list-export')?.addEventListener('click', () => {
+    const scope = app.querySelector('#share-list-scope')?.value || 'all';
+    const name = app.querySelector('#share-list-name')?.value.trim() || 'My boutique list';
+    if (scope === 'city' && !state.cityId) {
+      alert('Choose a city on the home screen first, or select All boutiques.');
+      return;
+    }
+    const cityScope = scope === 'city' ? state.cityId : '';
+    const stores = getShareScopeStores(state.data, scope, cityScope);
+    if (!stores.length) {
+      alert('No boutiques in this scope to share.');
+      return;
+    }
+    const payload = buildShareListPayload(name, stores, state.data);
+    const fileName = exportShareListFile(payload);
+    alert(`List saved as ${fileName}. Share the file from your downloads folder.`);
+  });
+
+  const shareListImport = app.querySelector('#share-list-import');
+  shareListImport?.addEventListener('change', async () => {
+    const file = shareListImport.files?.[0];
+    shareListImport.value = '';
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const payload = JSON.parse(text);
+      const result = importSharedList(state.data, payload);
+      saveData(state.data);
+      alert(`Imported ${result.total} boutiques (${result.added} new, ${result.updated} updated).`);
+    } catch (err) {
+      alert('Could not import that list file.');
+      console.error(err);
+    }
+  });
 
   const importInput = app.querySelector('#import-input');
   importInput?.addEventListener('change', async () => {

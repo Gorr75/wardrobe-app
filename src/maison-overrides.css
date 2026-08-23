@@ -13,6 +13,31 @@
   color: #1a1410;
 }
 
+.brand-icon-cartier {
+  background: linear-gradient(145deg, #7f1d1d, #ef4444);
+}
+
+.brand-icon-rolex {
+  background: linear-gradient(145deg, #14532d, #22c55e);
+}
+
+.brand-icon-dior {
+  background: linear-gradient(145deg, #44403c, #d6d3d1);
+  color: #1a1410;
+}
+
+.brand-icon-tiffany {
+  background: linear-gradient(145deg, #0e7490, #67e8f9);
+}
+
+.brand-icon-lv {
+  background: linear-gradient(145deg, #451a03, #ca8a04);
+}
+
+.brand-icon-ysl {
+  background: linear-gradient(145deg, #111827, #6b7280);
+}
+
 .brand-badge {
   display: inline-flex;
   padding: 2px 8px;
@@ -260,6 +285,15 @@
   font-size: 0.9rem;
 }
 
-.form-actions .btn-delete {
-  margin-right: auto;
+.share-list-name-field {
+  margin: 12px 0;
+}
+
+.share-list-name-field input {
+  width: 100%;
+  margin-top: 6px;
+}
+
+.first-run-import {
+  margin-top: 10px;
 }

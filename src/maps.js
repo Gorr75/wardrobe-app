@@ -9,6 +9,12 @@ const BRAND_COLORS = {
   Hermès: '#f97316',
   Omega: '#ef4444',
   Chanel: '#f5f5f5',
+  Cartier: '#dc2626',
+  Rolex: '#166534',
+  Dior: '#a8a29e',
+  Tiffany: '#0891b2',
+  'Louis Vuitton': '#92400e',
+  YSL: '#374151',
 };
 
 export function appleMapsUrl(store) {

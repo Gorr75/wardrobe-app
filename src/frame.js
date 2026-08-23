@@ -150,16 +150,33 @@ export function cityFilterMarkup(cities, selectedCityId) {
 }
 
 export function brandIconClass(brand) {
-  if (brand === 'Hermès') return 'brand-icon-hermes';
-  if (brand === 'Omega') return 'brand-icon-omega';
-  if (brand === 'Chanel') return 'brand-icon-chanel';
-  return 'brand-icon-custom';
+  const map = {
+    Hermès: 'brand-icon-hermes',
+    Omega: 'brand-icon-omega',
+    Chanel: 'brand-icon-chanel',
+    Cartier: 'brand-icon-cartier',
+    Rolex: 'brand-icon-rolex',
+    Dior: 'brand-icon-dior',
+    Tiffany: 'brand-icon-tiffany',
+    'Louis Vuitton': 'brand-icon-lv',
+    YSL: 'brand-icon-ysl',
+  };
+  return map[brand] || 'brand-icon-custom';
 }
 
 export function brandInitial(brand) {
-  if (brand === 'Hermès') return 'H';
-  if (brand === 'Omega') return 'Ω';
-  if (brand === 'Chanel') return 'C';
+  const map = {
+    Hermès: 'H',
+    Omega: 'Ω',
+    Chanel: 'C',
+    Cartier: 'C',
+    Rolex: 'R',
+    Dior: 'D',
+    Tiffany: 'T',
+    'Louis Vuitton': 'L',
+    YSL: 'Y',
+  };
+  if (map[brand]) return map[brand];
   const trimmed = (brand || '').trim();
   return trimmed ? trimmed.charAt(0).toUpperCase() : '?';
 }

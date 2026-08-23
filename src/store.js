@@ -8,6 +8,7 @@ const LEGACY_STORAGE_KEYS = ['maison-journal-v5', 'maison-journal-v4', 'maison-j
 const CITY_KEY = 'maison-journal-city';
 const HOME_TAB_KEY = 'maison-journal-home-tab';
 const VISITED_MENU_KEY = 'maison-journal-show-visited-menu';
+const FIRST_RUN_KEY = 'boutique-journal-first-run-done';
 
 export const DEFAULT_CITY_ID = 'stockholm';
 
@@ -60,6 +61,17 @@ function entryToVisit(entry) {
     at: new Date(entry.date).getTime(),
     note,
   });
+}
+
+export function emptyData() {
+  return {
+    staff: [],
+    visits: [],
+    storeMeta: {},
+    brandSizes: emptyBrandSizes(),
+    customStores: [],
+    purchases: [],
+  };
 }
 
 function seedData() {
@@ -154,6 +166,19 @@ export function defaultData() {
   return seedData();
 }
 
+export function isFirstRunPending() {
+  return !hasPersistedData() && localStorage.getItem(FIRST_RUN_KEY) !== '1';
+}
+
+export function markFirstRunComplete() {
+  localStorage.setItem(FIRST_RUN_KEY, '1');
+}
+
+function hasPersistedData() {
+  if (localStorage.getItem(STORAGE_KEY)) return true;
+  return LEGACY_STORAGE_KEYS.some((key) => localStorage.getItem(key));
+}
+
 export function loadSelectedCity() {
   const value = localStorage.getItem(CITY_KEY);
   if (value === null) return '';
@@ -187,7 +212,10 @@ export function loadData() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const normalized = normalizeDataModel(JSON.parse(raw));
-      if (normalized) return normalized;
+      if (normalized) {
+        markFirstRunComplete();
+        return normalized;
+      }
     }
 
     for (const legacyKey of LEGACY_STORAGE_KEYS) {
@@ -196,13 +224,16 @@ export function loadData() {
       const migrated = normalizeDataModel(JSON.parse(legacyRaw));
       if (migrated) {
         saveData(migrated);
+        markFirstRunComplete();
         return migrated;
       }
     }
   } catch {
     /* fall through */
   }
-  return defaultData();
+
+  if (isFirstRunPending()) return emptyData();
+  return emptyData();
 }
 
 export function saveData(data) {
@@ -296,7 +327,7 @@ export function deleteCustomStore(data, storeId) {
 }
 
 export function resetToSeed() {
-  return defaultData();
+  return seedData();
 }
 
 export function normalizeImportedData(parsed) {

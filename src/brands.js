@@ -1,4 +1,20 @@
-export const BRANDS = ['Hermès', 'Omega', 'Chanel'];
+export const BRANDS = [
+  'Hermès',
+  'Omega',
+  'Chanel',
+  'Cartier',
+  'Rolex',
+  'Dior',
+  'Tiffany',
+  'Louis Vuitton',
+  'YSL',
+];
+
+const GENERIC_SIZE_FIELDS = [
+  { key: 'shoes', label: 'Shoes', unit: 'EU', placeholder: '38' },
+  { key: 'rtw', label: 'Ready-to-wear', unit: '', placeholder: '38' },
+  { key: 'ring', label: 'Ring', unit: 'EU', placeholder: '52' },
+];
 
 export const BRAND_SIZE_FIELDS = {
   Hermès: [
@@ -19,6 +35,22 @@ export const BRAND_SIZE_FIELDS = {
     { key: 'handbag', label: 'Handbag', unit: 'style', placeholder: 'Medium Classic' },
     { key: 'ring', label: 'Ring', unit: 'EU', placeholder: '50' },
   ],
+  Cartier: [
+    { key: 'ring', label: 'Ring', unit: 'EU', placeholder: '52' },
+    { key: 'wrist', label: 'Wrist', unit: 'mm', placeholder: '17' },
+    { key: 'bracelet', label: 'Bracelet', unit: 'size', placeholder: '17' },
+  ],
+  Rolex: [
+    { key: 'wrist', label: 'Wrist', unit: 'mm', placeholder: '19' },
+    { key: 'case', label: 'Case', unit: 'mm', placeholder: '41' },
+  ],
+  Dior: GENERIC_SIZE_FIELDS,
+  Tiffany: [{ key: 'ring', label: 'Ring', unit: 'US', placeholder: '6' }],
+  'Louis Vuitton': [
+    { key: 'shoes', label: 'Shoes', unit: 'EU', placeholder: '38' },
+    { key: 'rtw', label: 'Ready-to-wear', unit: 'FR', placeholder: '38' },
+  ],
+  YSL: GENERIC_SIZE_FIELDS,
 };
 
 export function emptyBrandSizes() {
@@ -38,7 +70,7 @@ export function normalizeBrandSizes(raw) {
 
 export function getBrandSizeSummary(sizes, brand) {
   const values = sizes?.[brand] ?? {};
-  const fields = BRAND_SIZE_FIELDS[brand] ?? [];
+  const fields = BRAND_SIZE_FIELDS[brand] ?? GENERIC_SIZE_FIELDS;
   const filled = fields
     .filter((field) => values[field.key])
     .map((field) => {
