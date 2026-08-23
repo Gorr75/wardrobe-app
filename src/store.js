@@ -71,6 +71,7 @@ export function emptyData() {
     brandSizes: emptyBrandSizes(),
     customStores: [],
     purchases: [],
+    hiddenStoreIds: [],
   };
 }
 
@@ -128,6 +129,7 @@ function seedData() {
     },
     customStores: [],
     purchases: [],
+    hiddenStoreIds: [],
   };
 }
 
@@ -159,6 +161,9 @@ function normalizeDataModel(parsed) {
     brandSizes: normalizeBrandSizes(parsed.brandSizes),
     customStores: Array.isArray(parsed.customStores) ? parsed.customStores.map(normalizeCustomStore) : [],
     purchases: Array.isArray(parsed.purchases) ? parsed.purchases.map(normalizePurchase) : [],
+    hiddenStoreIds: Array.isArray(parsed.hiddenStoreIds)
+      ? parsed.hiddenStoreIds.filter((id) => typeof id === 'string' && id)
+      : [],
   };
 }
 
@@ -246,6 +251,7 @@ export function saveData(data) {
       brandSizes: data.brandSizes || emptyBrandSizes(),
       customStores: data.customStores || [],
       purchases: data.purchases || [],
+      hiddenStoreIds: data.hiddenStoreIds || [],
     }),
   );
 }
@@ -320,10 +326,30 @@ export function upsertCustomStore(data, store, existingId = null) {
 
 export function deleteCustomStore(data, storeId) {
   data.customStores = (data.customStores || []).filter((store) => store.id !== storeId);
+  clearStoreJournalData(data, storeId);
+}
+
+function clearStoreJournalData(data, storeId) {
   data.staff = data.staff.filter((member) => member.storeId !== storeId);
   data.visits = data.visits.filter((visit) => visit.storeId !== storeId);
   data.purchases = (data.purchases || []).filter((purchase) => purchase.storeId !== storeId);
   if (data.storeMeta?.[storeId]) delete data.storeMeta[storeId];
+}
+
+export function removeBoutiqueFromJournal(data, storeId, { isCustom = false } = {}) {
+  if (isCustom) {
+    deleteCustomStore(data, storeId);
+    return;
+  }
+  if (!data.hiddenStoreIds) data.hiddenStoreIds = [];
+  if (!data.hiddenStoreIds.includes(storeId)) {
+    data.hiddenStoreIds.push(storeId);
+  }
+  clearStoreJournalData(data, storeId);
+}
+
+export function deleteStaff(data, staffId) {
+  data.staff = data.staff.filter((member) => member.id !== staffId);
 }
 
 export function resetToSeed() {

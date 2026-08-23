@@ -108,6 +108,18 @@
   flex-shrink: 0;
 }
 
+.list .swipe-front .restaurant-card {
+  width: 100%;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.list .swipe-front .restaurant-card:active {
+  background: var(--bg-secondary);
+}
+
 .detail-photo.restaurant-photo {
   width: 96px;
   height: 96px;
