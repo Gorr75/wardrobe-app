@@ -1,3 +1,4 @@
+import { isNativeApp } from './native.js';
 import { normalizeImportedData } from './store.js';
 
 const LAST_EXPORT_KEY = 'maison-journal-last-export';
@@ -6,8 +7,8 @@ const BACKUP_REMINDER_DISMISSED_KEY = 'maison-journal-backup-dismissed';
 const AUTO_BACKUP_KEY = 'maison-journal-auto-backup';
 const FIRST_USE_KEY = 'maison-journal-first-use';
 
-export const APP_VERSION = '0.1';
-export const APP_BUILD = 18;
+export const APP_VERSION = '1.0';
+export const APP_BUILD = 3;
 export const BACKUP_REMINDER_DAYS = 30;
 
 export function appVersionLabel() {
@@ -67,15 +68,22 @@ export async function exportAllData(data, { silent = false, auto = false } = {})
   const fileName = `boutique-journal-backup-${todayDateString()}.json`;
 
   try {
-    const blob = new Blob([jsonText], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+    if (isNativeApp()) {
+      const result = await window.BoutiqueNative.saveBackupFile(jsonText, fileName, { share: !silent });
+      if (silent && result?.shared === false) {
+        /* user dismissed share sheet — backup still in Documents */
+      }
+    } else {
+      const blob = new Blob([jsonText], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
   } catch (err) {
     console.error(err);
     if (!silent) alert('Could not save the backup. Please try again.');
@@ -87,9 +95,11 @@ export async function exportAllData(data, { silent = false, auto = false } = {})
   if (auto) localStorage.setItem(LAST_AUTO_EXPORT_KEY, String(now));
 
   if (silent) {
-    if (auto) alert('Automatic backup saved to your downloads folder.');
+    if (auto) {
+      alert(isNativeApp() ? 'Automatic backup saved. Use the share sheet or Files → Boutique Journal.' : 'Automatic backup saved to your downloads folder.');
+    }
   } else {
-    alert(`Backup saved.\n\n${fileName}`);
+    alert(isNativeApp() ? `Backup ready.\n\n${fileName}\n\nSaved to Files and shared via the share sheet.` : `Backup saved.\n\n${fileName}`);
   }
 }
 

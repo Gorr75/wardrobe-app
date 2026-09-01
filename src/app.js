@@ -91,9 +91,24 @@ import {
   getShareScopeStores,
   importSharedList,
 } from './share-list.js';
+import { hapticLight, isNativeApp } from './native.js';
 
 const SWIPE_DELETE_WIDTH = 80;
 const SWIPE_VISIT_WIDTH = 80;
+const THEME_KEY = 'boutique-journal-theme';
+
+function getTheme() {
+  return localStorage.getItem(THEME_KEY) || 'current';
+}
+
+function setTheme(theme) {
+  localStorage.setItem(THEME_KEY, theme);
+  document.documentElement.setAttribute('data-theme', theme);
+}
+
+function applyStoredTheme() {
+  document.documentElement.setAttribute('data-theme', getTheme());
+}
 
 const state = {
   data: loadData(),
@@ -493,12 +508,14 @@ function bindSwipeRow(row, { onTap, onDelete, onVisit }) {
   deleteBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     closeAllSwipes();
+    hapticLight();
     onDelete();
   });
 
   visitBtn?.addEventListener('click', async (e) => {
     e.stopPropagation();
     closeAllSwipes();
+    hapticLight();
     if (onVisit) await onVisit();
   });
 
@@ -1458,6 +1475,7 @@ function renderStaffForm(storeId, editStaffId) {
         <div class="field">
           <label for="name">Name</label>
           <input id="name" type="text" value="${escapeHtml(member?.name || '')}" placeholder="Full name" required />
+          ${isNativeApp() ? '<button type="button" class="btn btn-secondary full-width" id="import-contact-btn">Import from Contacts</button>' : ''}
         </div>
         <div class="field">
           <label for="phone">Phone</label>
@@ -1494,6 +1512,10 @@ function renderStaffForm(storeId, editStaffId) {
   `;
 
   const nameInput = app.querySelector('#name');
+  const phoneInput = app.querySelector('#phone');
+  const emailInput = app.querySelector('#email');
+  const noteInput = app.querySelector('#note');
+  const instagramInput = app.querySelector('#staff-instagram');
   const roleInput = app.querySelector('#role');
   const storeSelect = app.querySelector('#staff-store');
   const saveBtn = app.querySelector('#save-btn');
@@ -1550,6 +1572,21 @@ function renderStaffForm(storeId, editStaffId) {
 
   app.querySelector('#cancel-btn')?.addEventListener('click', cancel);
   app.querySelector('#cancel-form')?.addEventListener('click', cancel);
+
+  app.querySelector('#import-contact-btn')?.addEventListener('click', async () => {
+    try {
+      const contact = await window.BoutiqueNative.pickContact();
+      if (!contact) return;
+      if (contact.name) nameInput.value = contact.name;
+      if (contact.phone) phoneInput.value = contact.phone;
+      if (contact.email) emailInput.value = contact.email;
+      if (contact.note && !noteInput.value.trim()) noteInput.value = contact.note;
+      updateSave();
+    } catch (err) {
+      alert('Could not import that contact.');
+      console.error(err);
+    }
+  });
 
   app.querySelector('#staff-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -1706,6 +1743,7 @@ function showBackupReminder() {
 function renderSettingsView() {
   const autoBackupMode = getAutoBackupMode();
   const showVisitedMenu = getShowVisitedMenu();
+  const theme = getTheme();
 
   app.className = '';
   app.innerHTML = `
@@ -1726,6 +1764,12 @@ function renderSettingsView() {
       <div class="section settings-section">
         <div class="section-title">Display</div>
         <div class="card settings-card">
+          <span class="sort-label">Theme</span>
+          <div class="sort-options settings-toggle-row">
+            <button type="button" class="sort-chip ${theme === 'current' ? 'selected' : ''}" data-theme="current">Current</button>
+            <button type="button" class="sort-chip ${theme === 'light' ? 'selected' : ''}" data-theme="light">Light</button>
+            <button type="button" class="sort-chip ${theme === 'midnight' ? 'selected' : ''}" data-theme="midnight">Midnight</button>
+          </div>
           <p class="data-hint">Show the top stats bar (Visited, Staff, Visits, Boutiques) and quick shortcuts to visited boutiques on the Boutiques tab. Hide to save space.</p>
           <div class="sort-options settings-toggle-row">
             <button type="button" class="sort-chip ${showVisitedMenu ? 'selected' : ''}" data-visited-menu="1">Show</button>
@@ -1799,6 +1843,13 @@ function renderSettingsView() {
     });
   });
 
+  app.querySelectorAll('[data-theme]').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      setTheme(chip.dataset.theme);
+      renderSettingsView();
+    });
+  });
+
   app.querySelectorAll('[data-visited-menu]').forEach((chip) => {
     chip.addEventListener('click', () => {
       setShowVisitedMenu(chip.dataset.visitedMenu === '1');
@@ -1808,7 +1859,7 @@ function renderSettingsView() {
 
   app.querySelector('#export-btn')?.addEventListener('click', () => exportAllData(state.data));
 
-  app.querySelector('#share-list-export')?.addEventListener('click', () => {
+  app.querySelector('#share-list-export')?.addEventListener('click', async () => {
     const scope = app.querySelector('#share-list-scope')?.value || 'all';
     const name = app.querySelector('#share-list-name')?.value.trim() || 'My boutique list';
     if (scope === 'city' && !state.cityId) {
@@ -1822,8 +1873,12 @@ function renderSettingsView() {
       return;
     }
     const payload = buildShareListPayload(name, stores, state.data);
-    const fileName = exportShareListFile(payload);
-    alert(`List saved as ${fileName}. Share the file from your downloads folder.`);
+    const fileName = await exportShareListFile(payload);
+    alert(
+      isNativeApp()
+        ? `List shared as ${fileName}.`
+        : `List saved as ${fileName}. Share the file from your downloads folder.`,
+    );
   });
 
   const shareListImport = app.querySelector('#share-list-import');
@@ -1882,4 +1937,5 @@ function renderSettingsView() {
   });
 }
 
+applyStoredTheme();
 render();

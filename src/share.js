@@ -3,7 +3,19 @@ import { appleMapsUrl, uberUrl } from './maps.js';
 import { getLastVisitAt, getVisitsForStore } from './store.js';
 import { formatInstagramUrl } from './staff.js';
 
+import { isNativeApp } from './native.js';
+
 export async function sharePlainText({ title, text }) {
+  if (isNativeApp()) {
+    try {
+      await window.BoutiqueNative.shareText({ title, text });
+      return;
+    } catch (err) {
+      console.error(err);
+      if (err?.name === 'AbortError') return;
+    }
+  }
+
   const payload = { title: title || 'Boutique Journal', text };
   if (navigator.share) {
     try {

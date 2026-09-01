@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 2048 2048" role="img" aria-label="Boutique Journal">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" r="72%">
+      <stop offset="0%" stop-color="#2a221c"/>
+      <stop offset="100%" stop-color="#100e0c"/>
+    </radialGradient>
+  </defs>
+  <rect width="2048" height="2048" fill="url(#bg)"/>
+  <circle cx="1024" cy="1040" r="660" fill="#c9a227"/>
+  <circle cx="1024" cy="1040" r="548" fill="#1c1814"/>
+  <circle cx="1024" cy="1040" r="500" fill="none" stroke="#c9a227" stroke-width="16"/>
+  <g fill="#f0d48a" stroke="#f0d48a" stroke-width="24" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M804 810 A90 90 0 0 1 996 810" fill="none"/>
+    <rect x="874" y="810" width="300" height="36" rx="12"/>
+    <path d="M874 828 L814 1008" fill="none"/>
+    <path d="M1174 828 L1234 1008" fill="none"/>
+    <rect x="1000" y="790" width="48" height="80" rx="10"/>
+    <path d="M1000 790 A48 48 0 0 1 976 850" fill="none"/>
+    <path d="M1048 790 A48 48 0 0 0 1072 850" fill="none"/>
+    <polygon points="1094,890 1354,890 1324,1230 1124,1230"/>
+  </g>
+</svg>
