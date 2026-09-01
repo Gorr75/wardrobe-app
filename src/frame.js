@@ -1,3 +1,5 @@
+import { actionIconMarkup, tabIconMarkup } from './icons.js';
+
 export function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text ?? '';
@@ -52,9 +54,9 @@ export function bindChromeAutoHide(app) {
 
 export function homeTabsMarkup(homeTab) {
   const tabs = [
-    { id: 'stores', label: 'Boutiques', icon: '🏛️' },
-    { id: 'staff', label: 'Staff', icon: '👤' },
-    { id: 'map', label: 'Map', icon: '🗺️' },
+    { id: 'stores', label: 'Boutiques', icon: tabIconMarkup('stores') },
+    { id: 'staff', label: 'Staff', icon: tabIconMarkup('staff') },
+    { id: 'map', label: 'Map', icon: tabIconMarkup('map') },
   ];
   return `
     <nav class="home-tabs" aria-label="Main">
@@ -116,7 +118,7 @@ export function headerActionsMarkup({ showAdd, addLabel, addAria }) {
     <div class="header-actions">
       <button type="button" class="header-action" id="settings-btn" aria-label="Settings">
         <span class="header-action-indicator" aria-hidden="true"></span>
-        <span class="tab-icon-svg" aria-hidden="true">⚙</span>
+        <span class="tab-icon-svg" aria-hidden="true">${actionIconMarkup('settings')}</span>
         <span class="header-action-label">Settings</span>
       </button>
       ${
@@ -124,7 +126,7 @@ export function headerActionsMarkup({ showAdd, addLabel, addAria }) {
           ? `
       <button type="button" class="header-action header-action-add" id="add-btn" aria-label="${escapeHtml(addAria)}">
         <span class="header-action-indicator" aria-hidden="true"></span>
-        <span class="tab-icon-svg" aria-hidden="true">＋</span>
+        <span class="tab-icon-svg" aria-hidden="true">${actionIconMarkup('add')}</span>
         <span class="header-action-label">${escapeHtml(addLabel)}</span>
       </button>`
           : ''

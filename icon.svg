@@ -1,16 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Boutique Journal">
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 2048 2048" role="img" aria-label="Boutique Journal">
   <defs>
-    <radialGradient id="bg" cx="50%" cy="42%" r="72%">
-      <stop offset="0%" stop-color="#1a1612"/>
+    <radialGradient id="bg" cx="50%" cy="50%" r="72%">
+      <stop offset="0%" stop-color="#2a221c"/>
       <stop offset="100%" stop-color="#100e0c"/>
     </radialGradient>
-    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f0d48a"/>
-      <stop offset="55%" stop-color="#e8c47a"/>
-      <stop offset="100%" stop-color="#b8893f"/>
-    </linearGradient>
   </defs>
-  <rect width="1024" height="1024" fill="url(#bg)"/>
-  <path d="M512 248 L612 448 L812 448 L652 572 L712 772 L512 648 L312 772 L372 572 L212 448 L412 448 Z" fill="none" stroke="url(#gold)" stroke-width="18" stroke-linejoin="round"/>
-  <text x="512" y="560" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="248" font-weight="700" fill="url(#gold)">BJ</text>
+  <rect width="2048" height="2048" fill="url(#bg)"/>
+  <circle cx="1024" cy="1040" r="660" fill="#c9a227"/>
+  <circle cx="1024" cy="1040" r="548" fill="#1c1814"/>
+  <circle cx="1024" cy="1040" r="500" fill="none" stroke="#c9a227" stroke-width="16"/>
+  <g fill="#f0d48a" stroke="#f0d48a" stroke-width="24" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M804 810 A90 90 0 0 1 996 810" fill="none"/>
+    <rect x="874" y="810" width="300" height="36" rx="12"/>
+    <path d="M874 828 L814 1008" fill="none"/>
+    <path d="M1174 828 L1234 1008" fill="none"/>
+    <rect x="1000" y="790" width="48" height="80" rx="10"/>
+    <path d="M1000 790 A48 48 0 0 1 976 850" fill="none"/>
+    <path d="M1048 790 A48 48 0 0 0 1072 850" fill="none"/>
+    <polygon points="1094,890 1354,890 1324,1230 1124,1230"/>
+  </g>
 </svg>

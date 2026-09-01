@@ -23,7 +23,7 @@ Generates:
 - `public/apple-touch-icon.png`, `icon-192.png`, `icon-512.png`
 - `ios/App/App/Assets.xcassets/AppIcon.appiconset/*` (if `ios/` exists)
 
-Source reference: `icon.svg` (gold **BJ** monogram on dark background).
+Source reference: `icon.svg` — Tableside-style gold plate with hanger + shopping bag.
 
 **Do not** use `npx capacitor-assets generate` — Apple may reject the default Capacitor template icon.
 
