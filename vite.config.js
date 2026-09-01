@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  base: '/wardrobe-app/',
+  base: process.env.CAPACITOR ? './' : '/wardrobe-app/',
 });

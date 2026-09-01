@@ -1,3 +1,4 @@
+import { isNativeApp } from './native.js';
 import { CITIES, getCity, getStoreById, STORES } from './cities.js';
 import { getStoreMeta, upsertCustomStore } from './store.js';
 
@@ -40,11 +41,17 @@ export function buildShareListPayload(name, stores, data) {
   };
 }
 
-export function exportShareListFile(payload) {
+export async function exportShareListFile(payload) {
   const slug = slugify(payload.name);
   const date = new Date().toISOString().slice(0, 10);
   const fileName = `boutique-list-${slug}-${date}.json`;
   const jsonText = JSON.stringify(payload, null, 2);
+
+  if (isNativeApp()) {
+    await window.BoutiqueNative.saveAndShareTextFile(jsonText, fileName);
+    return fileName;
+  }
+
   const blob = new Blob([jsonText], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');

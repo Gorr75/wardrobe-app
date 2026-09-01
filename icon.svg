@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Boutique Journal">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="72%">
+      <stop offset="0%" stop-color="#1a1612"/>
+      <stop offset="100%" stop-color="#100e0c"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f0d48a"/>
+      <stop offset="55%" stop-color="#e8c47a"/>
+      <stop offset="100%" stop-color="#b8893f"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <path d="M512 248 L612 448 L812 448 L652 572 L712 772 L512 648 L312 772 L372 572 L212 448 L412 448 Z" fill="none" stroke="url(#gold)" stroke-width="18" stroke-linejoin="round"/>
+  <text x="512" y="560" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="248" font-weight="700" fill="url(#gold)">BJ</text>
+</svg>

@@ -1,0 +1,18 @@
+{
+  "appId": "se.jansson.boutiquejournal",
+  "appName": "Boutique Journal",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#100e0c",
+    "scrollEnabled": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "backgroundColor": "#100e0c",
+      "showSpinner": false
+    }
+  }
+}
