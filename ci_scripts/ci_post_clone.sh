@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Xcode Cloud post-clone for Boutique Journal (Gorr75/wardrobe-app).
 # Mirrors Tableside's proven loop: stamp CI_BUILD_NUMBER onto native + JS
-# About strings, then npm ci and cap:sync, before xcodebuild.
+# Settings version strings, then npm ci and cap:sync, before xcodebuild.
 #
 # Do not hard-fail when Capacitor native pins differ from package-lock.
 # Do not stamp versions from an Xcode Run Script.
@@ -137,6 +137,11 @@ restore_package_resolved() {
 echo "Building web assets (required before xcodebuild)"
 export CAPACITOR=1
 npm run build
+if [[ ! -s "$ROOT/dist/index.html" ]]; then
+  echo "ERROR: dist/index.html missing after vite build — cannot copy webDir into ios/" >&2
+  exit 1
+fi
+echo "Vite dist OK ($(wc -c < "$ROOT/dist/index.html" | tr -d ' ') bytes)"
 
 # Capacitor 8.5.1 has no --no-build on `cap sync`. Split copy/update so a
 # plugin-list rewrite cannot hide a missing web bundle, and so we can restore
@@ -146,10 +151,11 @@ set +e
 npx cap copy ios
 COPY_STATUS=$?
 set -e
-if [[ "$COPY_STATUS" -ne 0 || ! -f "$ROOT/ios/App/App/public/index.html" ]]; then
-  echo "ERROR: cap copy ios failed (exit ${COPY_STATUS}); ios/App/App/public/index.html missing" >&2
+if [[ "$COPY_STATUS" -ne 0 ]]; then
+  echo "ERROR: cap copy ios failed (exit ${COPY_STATUS})" >&2
   exit 1
 fi
+"${SCRIPT_DIR}/verify_ios_web_assets.sh" "$ROOT"
 
 echo "Updating iOS native plugins (Package.swift / SPM list)"
 set +e
@@ -162,12 +168,10 @@ log_native_vs_lock
 
 if [[ "$SYNC_STATUS" -ne 0 ]]; then
   echo "WARN: cap update ios exited ${SYNC_STATUS}"
-  if [[ ! -f "$ROOT/ios/App/App/public/index.html" ]]; then
-    echo "ERROR: ios/App/App/public/index.html missing after cap copy/update" >&2
-    exit 1
-  fi
   echo "Web assets are present; continuing so a native≠lock mismatch cannot fail Xcode Cloud."
 fi
+
+"${SCRIPT_DIR}/verify_ios_web_assets.sh" "$ROOT"
 
 "${SCRIPT_DIR}/verify_package_resolved.sh" "$RESOLVED"
 

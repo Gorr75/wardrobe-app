@@ -23,7 +23,6 @@ import {
   storeNavActionsMarkup,
 } from './maps.js';
 import {
-  APP_VERSION,
   appVersionLabel,
   BACKUP_REMINDER_DAYS,
   checkWeeklyAutoBackup,
@@ -108,6 +107,20 @@ function setTheme(theme) {
 
 function applyStoredTheme() {
   document.documentElement.setAttribute('data-theme', getTheme());
+}
+
+function appearanceCardMarkup(theme, id, title, hint) {
+  return `
+    <button type="button" class="appearance-card ${theme === id ? 'selected' : ''}" data-appearance="${id}">
+      <div class="appearance-swatch appearance-swatch-${id}" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+      <div class="appearance-card-copy">
+        <strong>${title}</strong>
+        <p>${hint}</p>
+      </div>
+      <span class="appearance-check" aria-hidden="true">✓</span>
+    </button>`;
 }
 
 const state = {
@@ -388,12 +401,16 @@ function buildListBody({ stores, query, isStaffMode, isMapMode }) {
         <div class="empty-state">
           <div class="icon">👤</div>
           <h2>${allStaffEntries.length === 0 ? 'No staff yet' : 'No staff found'}</h2>
-          <p>${allStaffEntries.length === 0 ? 'Tap + to add your first contact at a boutique.' : 'Try another search.'}</p>
+          <p>${allStaffEntries.length === 0 ? 'Tap + to add your first staff member.' : 'Try another search.'}</p>
         </div>`;
     }
 
     return `
       ${staffControlsHtml}
+      <div class="list-section-header">
+        <span class="sort-label list-section-label">Staff</span>
+        <span class="list-section-count">${staffResults.length}</span>
+      </div>
       <ul class="list staff-browse-list">
         ${staffResults
           .map((member) => {
@@ -429,7 +446,8 @@ function buildListBody({ stores, query, isStaffMode, isMapMode }) {
   const filtered = stores.filter((s) => matchesSearch(`${s.name} ${s.brand} ${s.address} ${getCity(s.cityId).name}`, query));
 
   if (!filtered.length) {
-    return `${cityFilter}<div class="empty-state"><div class="icon">🏛️</div><h2>No boutiques</h2><p>Try another city or search.</p></div>`;
+    const catalogEmpty = !stores.length;
+    return `${cityFilter}<div class="empty-state"><div class="icon">🏛️</div><h2>${catalogEmpty ? 'No boutiques' : 'No matches'}</h2><p>${catalogEmpty ? 'Tap + to add your first boutique.' : 'Try another search.'}</p></div>`;
   }
 
   return `
@@ -615,7 +633,7 @@ function bindListBodyEvents() {
           render();
         },
         onDelete: () => {
-          confirmAction(
+          confirmDelete(
             `Delete ${memberName}?`,
             'This cannot be undone.',
             async () => {
@@ -642,15 +660,15 @@ function bindListBodyEvents() {
         onVisit: async () => {
           logVisit(storeId, '');
           await maybeAutoExport(state.data, 'visit');
+          alert('Visit logged.');
           refreshListBody();
         },
         onDelete: () => {
-          const isCustom = isCustomStore(store);
-          confirmAction(
-            isCustom ? `Delete ${store.name}?` : `Remove ${store.name}?`,
-            'This removes the boutique and all linked staff, visits, and purchases.',
+          confirmDelete(
+            `Delete ${store.name}?`,
+            'This removes the boutique and all its staff.',
             async () => {
-              removeBoutiqueFromJournal(state.data, storeId, { isCustom });
+              removeBoutiqueFromJournal(state.data, storeId, { isCustom: isCustomStore(store) });
               saveData(state.data);
               refreshListBody();
             },
@@ -696,6 +714,7 @@ function logVisit(storeId, note) {
     note: note.trim(),
   });
   saveData(state.data);
+  hapticLight();
 }
 
 function addPastVisit(storeId, dateValue, note) {
@@ -896,7 +915,7 @@ function renderStoreDetail(storeId) {
       onDelete: () => {
         const id = editBtn?.dataset.id;
         if (!id) return;
-        confirmAction(`Delete ${memberName}?`, 'This cannot be undone.', async () => {
+        confirmDelete(`Delete ${memberName}?`, 'This cannot be undone.', async () => {
           deleteStaff(state.data, id);
           saveData(state.data);
           renderStoreDetail(storeId);
@@ -1612,7 +1631,11 @@ function renderStaffForm(storeId, editStaffId) {
   });
 }
 
-function confirmAction(title, message, onConfirm, confirmLabel = 'Confirm') {
+function confirmDelete(title, message, onConfirm, confirmLabel = 'Delete') {
+  confirmAction(title, message, onConfirm, confirmLabel, 'Could not delete. Please try again.');
+}
+
+function confirmAction(title, message, onConfirm, confirmLabel = 'Confirm', errorMessage = 'Something went wrong. Please try again.') {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
@@ -1640,7 +1663,7 @@ function confirmAction(title, message, onConfirm, confirmLabel = 'Confirm') {
       await onConfirm();
       close();
     } catch (err) {
-      alert('Something went wrong. Please try again.');
+      alert(errorMessage);
       console.error(err);
     }
   });
@@ -1749,29 +1772,28 @@ function renderSettingsView() {
   app.innerHTML = `
     <header class="header">
       <button class="back-btn" id="back-btn" type="button" aria-label="Back">‹</button>
-      <h1>Settings</h1>
+      <h1>
+        <span class="app-title-block">
+          <span>Settings</span>
+          <span class="version-badge">${escapeHtml(appVersionLabel())}</span>
+        </span>
+      </h1>
     </header>
     <main class="content">
       <div class="section settings-section">
-        <div class="section-title">About</div>
+        <div class="section-title">Theme</div>
         <div class="card settings-card">
-          <div class="card-row">
-            <span class="label">Boutique Journal</span>
-            <span class="value">${escapeHtml(appVersionLabel())}</span>
+          <div class="appearance-options">
+            ${appearanceCardMarkup(theme, 'current', 'Current', 'Warm gold dark')}
+            ${appearanceCardMarkup(theme, 'light', 'Light', 'Cream paper')}
+            ${appearanceCardMarkup(theme, 'midnight', 'Midnight', 'Cool night')}
           </div>
         </div>
       </div>
       <div class="section settings-section">
-        <div class="section-title">Display</div>
+        <div class="section-title">Show / hide info</div>
         <div class="card settings-card">
-          <span class="sort-label">Theme</span>
-          <div class="sort-options settings-toggle-row">
-            <button type="button" class="sort-chip ${theme === 'current' ? 'selected' : ''}" data-theme="current">Current</button>
-            <button type="button" class="sort-chip ${theme === 'light' ? 'selected' : ''}" data-theme="light">Light</button>
-            <button type="button" class="sort-chip ${theme === 'midnight' ? 'selected' : ''}" data-theme="midnight">Midnight</button>
-          </div>
-          <p class="data-hint">Show the top stats bar (Visited, Staff, Visits, Boutiques) and quick shortcuts to visited boutiques on the Boutiques tab. Hide to save space.</p>
-          <div class="sort-options settings-toggle-row">
+          <div class="sort-options settings-toggle-row settings-info-toggle">
             <button type="button" class="sort-chip ${showVisitedMenu ? 'selected' : ''}" data-visited-menu="1">Show</button>
             <button type="button" class="sort-chip ${!showVisitedMenu ? 'selected' : ''}" data-visited-menu="0">Hide</button>
           </div>
@@ -1780,7 +1802,7 @@ function renderSettingsView() {
       <div class="section settings-section">
         <div class="section-title">Share lists</div>
         <div class="card settings-card">
-          <p class="data-hint">Share boutique lists as JSON files — names, addresses, and notes only (no staff, visits, or purchases).</p>
+          <p class="data-hint">Share boutique names, addresses, and notes as a JSON file (no staff, visits, or purchases). On iPhone, use the share sheet or Files → On My iPhone → Boutique Journal.</p>
           <div class="share-list-scope">
             <label class="sort-label" for="share-list-scope">Scope</label>
             <select id="share-list-scope" class="city-filter-select">
@@ -1804,7 +1826,7 @@ function renderSettingsView() {
         <div class="section-title">Backup</div>
         <div class="card settings-card">
           <p class="data-hint backup-last-hint">${escapeHtml(getLastExportLabel())}</p>
-          <p class="data-hint">Export staff, visits, purchases, custom boutiques, photos/notes, and your brand sizes. To restore, use Import from file below.</p>
+          <p class="data-hint">To restore, use Import from file. On iPhone, exported backups are in Files → On My iPhone → Boutique Journal.</p>
           <button class="btn btn-secondary full-width" id="export-btn" type="button">Export to file</button>
           <label class="btn btn-secondary full-width import-label">
             Import from file
@@ -1817,7 +1839,7 @@ function renderSettingsView() {
               <button type="button" class="sort-chip ${autoBackupMode === 'weekly' ? 'selected' : ''}" data-auto-backup="weekly">Weekly</button>
               <button type="button" class="sort-chip ${autoBackupMode === 'visit' ? 'selected' : ''}" data-auto-backup="visit">On visit</button>
             </div>
-            <p class="data-hint auto-backup-hint">Weekly saves once per week. On visit saves when you log a boutique visit. Backups download to your device.</p>
+            <p class="data-hint auto-backup-hint">Weekly and visit modes save a backup file to Files → On My iPhone → Boutique Journal (and may open the share sheet).</p>
           </div>
         </div>
       </div>
@@ -1843,9 +1865,9 @@ function renderSettingsView() {
     });
   });
 
-  app.querySelectorAll('[data-theme]').forEach((chip) => {
-    chip.addEventListener('click', () => {
-      setTheme(chip.dataset.theme);
+  app.querySelectorAll('[data-appearance]').forEach((card) => {
+    card.addEventListener('click', () => {
+      setTheme(card.dataset.appearance);
       renderSettingsView();
     });
   });
@@ -1876,7 +1898,7 @@ function renderSettingsView() {
     const fileName = await exportShareListFile(payload);
     alert(
       isNativeApp()
-        ? `List shared as ${fileName}.`
+        ? `List saved. Use the share sheet, or find it in Files → On My iPhone → Boutique Journal.\n\n${fileName}`
         : `List saved as ${fileName}. Share the file from your downloads folder.`,
     );
   });
@@ -1939,3 +1961,4 @@ function renderSettingsView() {
 
 applyStoredTheme();
 render();
+window.BoutiqueNative?.hideSplash?.();

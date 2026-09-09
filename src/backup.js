@@ -12,7 +12,7 @@ export const APP_BUILD = 3;
 export const BACKUP_REMINDER_DAYS = 30;
 
 export function appVersionLabel() {
-  return `Version ${APP_VERSION} build ${APP_BUILD}`;
+  return `${APP_VERSION} (${APP_BUILD})`;
 }
 
 let weeklyAutoExportDoneThisSession = false;
@@ -96,10 +96,18 @@ export async function exportAllData(data, { silent = false, auto = false } = {})
 
   if (silent) {
     if (auto) {
-      alert(isNativeApp() ? 'Automatic backup saved. Use the share sheet or Files → Boutique Journal.' : 'Automatic backup saved to your downloads folder.');
+      alert(
+        isNativeApp()
+          ? 'Automatic backup saved to Files → On My iPhone → Boutique Journal.'
+          : 'Automatic backup saved to your downloads folder.',
+      );
     }
   } else {
-    alert(isNativeApp() ? `Backup ready.\n\n${fileName}\n\nSaved to Files and shared via the share sheet.` : `Backup saved.\n\n${fileName}`);
+    alert(
+      isNativeApp()
+        ? `Backup saved. Use Save to Files in the share sheet (iCloud Drive), or find it in Files → On My iPhone → Boutique Journal.\n\n${fileName}`
+        : `Backup saved.\n\n${fileName}`,
+    );
   }
 }
 

@@ -17,7 +17,7 @@ This is the **preferred recurring TestFlight path** for Boutique Journal. It is 
 
 Local TestFlight **1.0 (3)** failed ITC processing with **Error 90683** (missing `NSContactsUsageDescription`). The committed `ios/App/App/Info.plist` now includes contacts, camera, and photo-library usage strings; `ci_post_clone` refuses to continue if those keys disappear.
 
-Local `ios/App/App.xcodeproj` may keep a different `CURRENT_PROJECT_VERSION` than Settings → About. On Cloud, `CI_BUILD_NUMBER` rewrites both **before** `cap:sync`.
+Local `ios/App/App.xcodeproj` may keep a different `CURRENT_PROJECT_VERSION` than the Settings version line. On Cloud, `CI_BUILD_NUMBER` rewrites both **before** `cap:sync`.
 
 ## What Cloud does (already in this repo)
 
@@ -29,10 +29,10 @@ On every Cloud action, Xcode Cloud runs:
    - Installs Node 22 if the image does not already have Node ≥ 20 (official tarball first; Homebrew is a fallback and must not abort the script)
    - If `CI_BUILD_NUMBER` is set: stamps `APP_BUILD` in `src/backup.js` and `CURRENT_PROJECT_VERSION` in the pbxproj (marketing version stays **1.0**)
    - `npm ci` (keeps `package-lock.json`; cache under the repo / tmp — does not write `~/.npmrc`). If the host `@rollup/rollup-*` optional binary is missing — typical on Xcode Cloud after a Linux-generated lockfile — install that platform package explicitly (`npm install @rollup/rollup-darwin-arm64@<lockfile rollup version> --no-save`), restore any lock/package.json edits, then fall back to `--force`, `npm install --include=optional --no-save`, and `npm rebuild`. A missing binding is classified only when `require('rollup/dist/native.js')` fails with `MODULE_NOT_FOUND`; a failed `npm ci` / `npm install`, or a dlopen/`other-error` load failure, is reported as that error — not as the optional-deps bug.
-   - Vite build, then `npx cap copy ios` + `npx cap update ios` (Capacitor 8.5.1 has no `--no-build` on `cap sync`)
+   - Vite build (requires `dist/index.html`), then `npx cap copy ios` + `npx cap update ios` (Capacitor 8.5.1 has no `--no-build` on `cap sync`). `verify_ios_web_assets.sh` requires `ios/App/App/public/index.html` plus JS so Archive cannot ship a black WKWebView
    - Restores `Package.resolved` if `cap sync` deletes it or drops a required pin
    - Logs Capacitor native pin vs `package-lock.json` and **does not fail** on mismatch
-2. **`ci_pre_xcodebuild.sh`**: re-checks Info.plist keys, `Package.resolved`, and `ios/App/App/public/index.html`
+2. **`ci_pre_xcodebuild.sh`**: re-checks Info.plist keys, `Package.resolved`, and `verify_ios_web_assets.sh` (`ios/App/App/public`)
 3. **`xcodebuild` Archive**
 4. **`ci_post_xcodebuild.sh`**: logs archive version strings and **always exits 0**
 
@@ -111,7 +111,7 @@ Before the first Cloud upload, set the workflow’s next build number **above th
 2. Confirm the workflow run executes **ci_post_clone** (Node + stamp + `cap:sync`) before Archive.
 3. If SPM fetch fails: confirm `Package.resolved` is still at `ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`, grant the GitHub package(s) listed in the Cloud log, and retry.
 4. If signing fails: confirm the App ID, the team on the App target, and that Cloud is managing certificates for **this** bundle ID.
-5. Confirm TestFlight Internal **BU Butiksapp** shows **Boutique Journal 1.0 (CI_BUILD_NUMBER)** (processing succeeded — not another 90683) and Settings → About shows the same build.
+5. Confirm TestFlight Internal **BU Butiksapp** shows **Boutique Journal 1.0 (CI_BUILD_NUMBER)** (processing succeeded — not another 90683) and Settings shows the same compact `1.0 (CI_BUILD_NUMBER)` line.
 6. Confirm the build is under Apple ID **6807574028**, not Tableside.
 
 ## App Store Connect listing icon (grey wireframe)
