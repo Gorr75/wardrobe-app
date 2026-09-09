@@ -32,9 +32,9 @@ Generates:
 - `public/apple-touch-icon.png`, `icon-192.png`, `icon-512.png`
 - `ios/App/App/Assets.xcassets/AppIcon.appiconset/*`
 
-Source reference: `icon.svg` — Tableside-style gold plate with hanger + shopping bag.
+Source reference: `icon.svg` — Tableside-style gold plate with hanger + shopping bag. **Keep this artwork** — do not redesign or run `npx capacitor-assets generate`.
 
-**Do not** use `npx capacitor-assets generate` — Apple may reject the default Capacitor template icon.
+The committed `AppIcon.appiconset` is already that plate (1024 RGB, no alpha). Cloud Archive ships it as-is. ASC’s grey wireframe listing tile is a **separate** App Information upload (or a processed build) — see [xcode-cloud.md](xcode-cloud.md). To update the Connect tile before a build processes, upload `ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png`.
 
 ## Local Xcode (fallback only)
 

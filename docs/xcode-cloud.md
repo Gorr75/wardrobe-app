@@ -25,13 +25,16 @@ On every Cloud action, Xcode Cloud runs:
 
 1. **`ci_post_clone.sh`** (repo-root `ci_scripts/` and the same files next to `App.xcodeproj` in `ios/App/ci_scripts/`):
    - Verifies `Info.plist` still has contacts/camera/photo usage strings (blocks a repeat of Error 90683)
-   - Installs Node 22 if the image does not already have Node ≥ 20
+   - Verifies the workspace `Package.resolved` Cloud needs for `capacitor-swift-pm`
+   - Installs Node 22 if the image does not already have Node ≥ 20 (official tarball first; Homebrew is a fallback and must not abort the script)
    - If `CI_BUILD_NUMBER` is set: stamps `APP_BUILD` in `src/backup.js` and `CURRENT_PROJECT_VERSION` in the pbxproj (marketing version stays **1.0**)
-   - `npm ci`
-   - `npm run cap:sync` (Vite build + copy into `ios/App/App/public` + SPM plugin list)
+   - `npm ci` (retries; cache under the repo / tmp — does not write `~/.npmrc`)
+   - Vite build, then `npx cap copy ios` + `npx cap update ios` (Capacitor 8.5.1 has no `--no-build` on `cap sync`)
+   - Restores `Package.resolved` if `cap sync` deletes it
    - Logs Capacitor native pin vs `package-lock.json` and **does not fail** on mismatch
-2. **`xcodebuild` Archive**
-3. **`ci_post_xcodebuild.sh`**: logs archive version strings and **always exits 0**
+2. **`ci_pre_xcodebuild.sh`**: re-checks Info.plist keys, `Package.resolved`, and `ios/App/App/public/index.html`
+3. **`xcodebuild` Archive**
+4. **`ci_post_xcodebuild.sh`**: logs archive version strings and **always exits 0**
 
 There is **no** Xcode Run Script phase that writes `CFBundleVersion`. That pattern fails Cloud’s mutable-output checks.
 
@@ -63,7 +66,7 @@ Still confirm:
 5. When Cloud asks to use source-control credentials for Swift packages, **grant** at least:
    - `https://github.com/ionic-team/capacitor-swift-pm` (exact `8.5.1` via `CapApp-SPM/Package.swift`)
    - Any additional GitHub SPM URLs Cloud lists on the first failed resolve
-6. There is no committed `Package.resolved` yet (Linux cannot run Xcode’s resolver). The first successful Cloud/Xcode resolve will create one; committing it later is optional but makes builds more reproducible.
+6. `Package.resolved` is committed at `ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved` (the path Xcode Cloud requires when automatic resolution is disabled). Pin is `capacitor-swift-pm` **8.5.1** (`6afa7424fd2fcd8ca1e577478e8a00af284b7e82`). After changing Capacitor or `CapApp-SPM/Package.swift`, regenerate and commit that file from Xcode (File → Packages → Resolve Package Versions).
 
 ## Workflow settings to create (exact)
 
@@ -102,10 +105,16 @@ Before the first Cloud upload, set the workflow’s next build number **above th
 
 1. Merge this PR to `main` (Cloud is configured for branch changes on `main`).
 2. Confirm the workflow run executes **ci_post_clone** (Node + stamp + `cap:sync`) before Archive.
-3. If SPM fetch fails: grant the GitHub package(s) listed in the Cloud log and retry.
+3. If SPM fetch fails: confirm `Package.resolved` is still at `ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`, grant the GitHub package(s) listed in the Cloud log, and retry.
 4. If signing fails: confirm the App ID, the team on the App target, and that Cloud is managing certificates for **this** bundle ID.
 5. Confirm TestFlight Internal **BU Butiksapp** shows **Boutique Journal 1.0 (CI_BUILD_NUMBER)** (processing succeeded — not another 90683) and Settings → About shows the same build.
 6. Confirm the build is under Apple ID **6807574028**, not Tableside.
+
+## App Store Connect listing icon (grey wireframe)
+
+Keep the committed gold plate / hanger+bag `AppIcon.appiconset`. Do not redesign it.
+
+ASC’s header tile is a **marketing asset**. It does not change just because the catalog is in git. Home Screen / TestFlight use the binary AppIcon (Cloud picks it up automatically). The Connect listing stays Apple’s grey wireframe until a build **finishes processing**, or Magnus uploads `ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png` under **App Information**. That is expected after Build 1 failed.
 
 ## Local fallback (not the recurring path)
 
