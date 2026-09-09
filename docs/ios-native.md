@@ -29,12 +29,24 @@ npm run icons
 
 Generates:
 
-- `public/apple-touch-icon.png`, `icon-192.png`, `icon-512.png`
-- `ios/App/App/Assets.xcassets/AppIcon.appiconset/*`
+- `public/apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `app-store-icon-1024.png`
+- `ios/App/App/Assets.xcassets/AppIcon.appiconset/*` (1024 RGB light + dark, plus tinted)
+- `ios/App/App/Assets.xcassets/Splash.imageset/*` (dark boutique plate — not the Capacitor “C”)
 
-Source reference: `icon.svg` — Tableside-style gold plate with hanger + shopping bag.
+Source reference: `icon.svg` / `scripts/generate-app-icons.py` — Tableside-style gold plate with hanger + shopping bag.
 
-**Do not** use `npx capacitor-assets generate` — Apple may reject the default Capacitor template icon.
+**Do not** use `npx capacitor-assets generate` — that bakes the default Capacitor template icon.
+
+### App Store Connect listing icon (grey wireframe)
+
+The **AppIcon in the binary** is not the same as the **Connect listing icon**.
+
+ASC shows Apple’s generic grey wireframe until **either**:
+
+1. A build that contains this AppIcon **finishes processing** in Connect (Cloud Archive → TestFlight / App Store), or
+2. Magnus uploads the 1024×1024 PNG in **App Store Connect → Boutique Journal (6807574028) → App Information** (app icon). File: [`public/app-store-icon-1024.png`](../public/app-store-icon-1024.png) (same pixels as `ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png`).
+
+Cloud does not need a special icon step — `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon` and the committed `.appiconset` ship with Archive. Upload (2) only if the listing should show the plate **before** a successful Cloud build exists.
 
 ## Local Xcode (fallback only)
 
