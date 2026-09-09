@@ -64,38 +64,32 @@ fi
 # Vite/rollup 4 loads a platform optional native binding. npm ci from a
 # Linux-generated lockfile can omit @rollup/rollup-darwin-arm64 on Xcode Cloud
 # (npm optional-deps bug). Do not delete package-lock.json.
-rollup_native_ok() {
-  node --input-type=commonjs -e "require('rollup/dist/native.js')" >/dev/null 2>&1
-}
+# shellcheck source=ensure_rollup_native.sh
+source "${SCRIPT_DIR}/ensure_rollup_native.sh"
 
 npm_install_for_cloud() {
   local attempt=1
   local max=3
+  local npm_status=0
   while true; do
     echo "Installing npm dependencies (attempt ${attempt}/${max})"
     rm -rf node_modules
-    if npm ci; then
-      if rollup_native_ok; then
-        echo "npm ci OK; rollup native binding present"
-        return 0
-      fi
-      echo "WARN: npm ci succeeded but rollup native binding is missing (optional-deps bug)"
-    else
-      echo "WARN: npm ci failed (attempt ${attempt}/${max})"
-    fi
-
-    echo "Retrying with rm -rf node_modules && npm i (keeping package-lock.json)"
-    rm -rf node_modules
-    if npm i --no-audit --no-fund && rollup_native_ok; then
-      echo "npm i OK; rollup native binding present"
+    set +e
+    npm ci
+    npm_status=$?
+    set -e
+    if [[ "$npm_status" -eq 0 ]]; then
+      echo "npm ci OK"
+      ensure_rollup_native
       return 0
     fi
 
+    echo "ERROR: npm ci failed (exit ${npm_status}) — install error, not a rollup-native detection miss" >&2
     if [[ "$attempt" -ge "$max" ]]; then
-      echo "ERROR: npm install failed after ${max} attempts (rollup native still missing or install error)" >&2
+      echo "ERROR: npm ci failed after ${max} attempts; not falling back to npm i (would not fix optional darwin bindings and can rewrite the lock)" >&2
       return 1
     fi
-    echo "WARN: npm install attempt ${attempt}/${max} failed; retrying in 5s"
+    echo "WARN: retrying npm ci in 5s"
     attempt=$((attempt + 1))
     sleep 5
   done
