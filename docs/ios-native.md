@@ -4,7 +4,7 @@
 
 Recurring TestFlight Internal uploads go through **Xcode Cloud**, not a local Archive.
 
-See **[docs/xcode-cloud.md](xcode-cloud.md)** for the one-time App Store Connect app, the **Boutique App Store** workflow (scheme **App**, branch **main**, TestFlight Internal group **Test**), and signing / SPM grant notes.
+See **[docs/xcode-cloud.md](xcode-cloud.md)** for ASC inventory (Apple ID **6807574028**), creating the **Boutique App Store** workflow (scheme **App**, branch **main**, TestFlight Internal group **BU Butiksapp**), and signing / SPM grant notes.
 
 On Cloud, `CI_BUILD_NUMBER` is written to both `CFBundleVersion` and Settings → About (`APP_BUILD` in `src/backup.js`) in `ci_post_clone` **before** `cap:sync`. Marketing version stays **1.0**.
 
@@ -52,13 +52,16 @@ In Xcode:
 - Version **1.0**, increment **Build** each upload
 - Archive → Distribute → App Store Connect → Upload
 
-If a local upload already consumed `1.0 (N)`, the Cloud workflow’s next `CI_BUILD_NUMBER` must start above that N. See [docs/xcode-cloud.md](xcode-cloud.md).
+If a local upload already consumed `1.0 (N)`, the Cloud workflow’s next `CI_BUILD_NUMBER` must start above that N. Build **3** failed processing (90683) but may still be reserved — see [docs/xcode-cloud.md](xcode-cloud.md).
 
 ## Info.plist
 
-Committed in `ios/App/App/Info.plist` (aligned with Tableside’s native checklist):
+Committed in `ios/App/App/Info.plist`. Local TestFlight **1.0 (3)** failed ITC **Error 90683** because `NSContactsUsageDescription` was missing — do not ship without these keys (`ci_post_clone` checks them):
 
-- Camera, Photo Library, Photo Library Add, and Contacts usage strings
+- `NSContactsUsageDescription` (staff → Import from Contacts)
+- `NSCameraUsageDescription`
+- `NSPhotoLibraryUsageDescription`
+- `NSPhotoLibraryAddUsageDescription`
 - `ITSAppUsesNonExemptEncryption` = **NO**
 - `UIFileSharingEnabled` = **YES** and `LSSupportsOpeningDocumentsInPlace` = **YES** (backup files in Files app)
 

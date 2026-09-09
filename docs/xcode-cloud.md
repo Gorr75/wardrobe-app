@@ -2,13 +2,20 @@
 
 This is the **preferred recurring TestFlight path** for Boutique Journal. It is a **separate Apple app** and a **separate Xcode Cloud workflow** from Tableside. Never point a Tableside workflow at this repo, and never reuse Tableside’s bundle ID, scheme settings, or TestFlight group as a shortcut.
 
-| | Boutique Journal | Tableside |
+## App Store Connect inventory (already created)
+
+| | Boutique Journal | Do not reuse from Tableside |
 |---|---|---|
-| GitHub repo | `Gorr75/wardrobe-app` | `Gorr75/repo` (private) |
+| GitHub repo | `Gorr75/wardrobe-app` | `Gorr75/repo` |
 | App name | Boutique Journal | Tableside |
-| Bundle ID | `se.jansson.boutiquejournal` | Tableside’s own ID — do not reuse |
-| Workflow name | **Boutique App Store** | Tableside’s own workflow — do not reuse |
+| Apple ID | **6807574028** | Tableside’s Apple ID |
+| Bundle ID | `se.jansson.boutiquejournal` | Tableside’s bundle ID |
+| SKU | `se.jansson.boutiquejournal` | Tableside’s SKU |
+| TestFlight Internal group | **BU Butiksapp** (exists) | Do not attach Tableside’s group |
+| Xcode Cloud workflow | **None yet** — create **Boutique App Store** below | Tableside’s own workflow |
 | Scheme | **App** | Tableside’s own scheme |
+
+Local TestFlight **1.0 (3)** failed ITC processing with **Error 90683** (missing `NSContactsUsageDescription`). The committed `ios/App/App/Info.plist` now includes contacts, camera, and photo-library usage strings; `ci_post_clone` refuses to continue if those keys disappear.
 
 Local `ios/App/App.xcodeproj` may keep a different `CURRENT_PROJECT_VERSION` than Settings → About. On Cloud, `CI_BUILD_NUMBER` rewrites both **before** `cap:sync`.
 
@@ -17,6 +24,7 @@ Local `ios/App/App.xcodeproj` may keep a different `CURRENT_PROJECT_VERSION` tha
 On every Cloud action, Xcode Cloud runs:
 
 1. **`ci_post_clone.sh`** (repo-root `ci_scripts/` and the same files next to `App.xcodeproj` in `ios/App/ci_scripts/`):
+   - Verifies `Info.plist` still has contacts/camera/photo usage strings (blocks a repeat of Error 90683)
    - Installs Node 22 if the image does not already have Node ≥ 20
    - If `CI_BUILD_NUMBER` is set: stamps `APP_BUILD` in `src/backup.js` and `CURRENT_PROJECT_VERSION` in the pbxproj (marketing version stays **1.0**)
    - `npm ci`
@@ -29,21 +37,19 @@ There is **no** Xcode Run Script phase that writes `CFBundleVersion`. That patte
 
 Do **not** add unused channel env vars. Boutique does not need a `BOUTIQUE_CLOUD_CHANNEL` (or similar) unless you later add a second workflow that must branch in these scripts.
 
-## One-time App Store Connect app
+## App Store Connect app (already exists)
 
-Skip any step that is already done. Create a **new** iOS app — do not add a platform onto Tableside.
+Do **not** create another app. Boutique Journal is already in ASC:
 
-1. [Certificates, Identifiers & Profiles](https://developer.apple.com/account/resources/identifiers/list) → Identifiers → register an **App ID** if needed:
-   - Bundle ID: `se.jansson.boutiquejournal`
-   - Description: Boutique Journal
-2. [App Store Connect](https://appstoreconnect.apple.com) → **My Apps** → **+** → **New App**:
-   - Platforms: iOS
-   - Name: **Boutique Journal**
-   - Primary language: English (or Swedish if you already standardized on that)
-   - Bundle ID: `se.jansson.boutiquejournal`
-   - SKU: `boutique-journal` (or any unique SKU; this is not user-visible)
-3. Encryption: the committed `Info.plist` sets `ITSAppUsesNonExemptEncryption` = **NO**. Complete the ASC compliance question the same way if ASC still asks.
-4. Users: Magnus (and anyone who should see Internal builds) must be able to access this app.
+- Apple ID: **6807574028**
+- Bundle ID / SKU: `se.jansson.boutiquejournal`
+- TestFlight Internal group: **BU Butiksapp**
+
+Still confirm:
+
+1. Identifiers → App ID `se.jansson.boutiquejournal` is the one attached to Apple ID 6807574028 (not Tableside).
+2. Encryption: the committed `Info.plist` sets `ITSAppUsesNonExemptEncryption` = **NO**. Complete the ASC compliance question the same way if ASC still asks.
+3. Users who should see Internal builds can access this app and group **BU Butiksapp**.
 
 ## One-time Xcode Cloud product
 
@@ -61,11 +67,12 @@ Skip any step that is already done. Create a **new** iOS app — do not add a pl
 
 ## Workflow settings to create (exact)
 
-Create a **new** workflow. Suggested name: **Boutique App Store**.
+There is **no** Xcode Cloud workflow on Boutique Journal yet. Create a **new** one named **Boutique App Store**, mirroring Tableside’s App Store loop, pointed at **this** app only.
 
 | Setting | Value |
 |---|---|
 | Name | Boutique App Store |
+| ASC app | Boutique Journal (Apple ID **6807574028**) |
 | Project / workspace | `ios/App/App.xcodeproj` (scheme is inside this project) |
 | Scheme | **App** (shared scheme is committed at `ios/App/App.xcodeproj/xcshareddata/xcschemes/App.xcscheme`) |
 | Start condition | **Branch Changes** on **`main`** |
@@ -73,24 +80,23 @@ Create a **new** workflow. Suggested name: **Boutique App Store**.
 | Xcode / macOS | Latest stable Xcode 16+ recommended (iOS 15 deployment target) |
 | Environment variables | None required |
 | Actions | **Archive** (Release, generic iOS device) → **Distribution Preparation** → **App Store Connect** |
-| Post-action | **TestFlight Internal Testing** → Internal group **Test** |
+| Post-action | **TestFlight Internal Testing** → Internal group **BU Butiksapp** |
 
-### Internal group “Test”
+### Internal group “BU Butiksapp”
 
-If Boutique Journal does not already have an Internal testers group named **Test**:
+This group already exists on Boutique Journal. Do **not** create a group named Test.
 
-1. App Store Connect → Boutique Journal → **TestFlight** → Internal Testing
-2. Create a group named **Test**
-3. Add testers (Apple IDs that belong to the team)
-4. Attach that group to the workflow post-action
+1. App Store Connect → Boutique Journal (6807574028) → **TestFlight** → Internal Testing → **BU Butiksapp**
+2. Confirm testers are on that group
+3. Attach **BU Butiksapp** as the workflow post-action destination
 
 Do not attach Tableside’s Internal group.
 
 ### Build number floor
 
-Xcode Cloud’s `CI_BUILD_NUMBER` starts at **1** for a new workflow. App Store Connect rejects a reuse of `1.0 (N)` if that build was already uploaded (local archives in this repo are **1.0 (3)**).
+Xcode Cloud’s `CI_BUILD_NUMBER` starts at **1** for a new workflow. Local **1.0 (3)** was uploaded and **failed processing** (Error 90683). Invalid builds sometimes still consume that number.
 
-Before the first Cloud upload, in the workflow’s build-number / “next build number” control, start **above the highest Boutique Journal build already in ASC**. If nothing has been uploaded yet, starting at 1 is fine.
+Before the first Cloud upload, set the workflow’s next build number **above the highest Boutique Journal `CFBundleVersion` ASC still considers used**. Prefer starting at **4** or higher unless ASC explicitly allows a retry of 3 after the Invalid state.
 
 ## First build checklist
 
@@ -98,8 +104,8 @@ Before the first Cloud upload, in the workflow’s build-number / “next build 
 2. Confirm the workflow run executes **ci_post_clone** (Node + stamp + `cap:sync`) before Archive.
 3. If SPM fetch fails: grant the GitHub package(s) listed in the Cloud log and retry.
 4. If signing fails: confirm the App ID, the team on the App target, and that Cloud is managing certificates for **this** bundle ID.
-5. Confirm TestFlight Internal shows **Boutique Journal 1.0 (CI_BUILD_NUMBER)** and Settings → About shows the same build.
-6. Confirm the build is **not** filed under Tableside.
+5. Confirm TestFlight Internal **BU Butiksapp** shows **Boutique Journal 1.0 (CI_BUILD_NUMBER)** (processing succeeded — not another 90683) and Settings → About shows the same build.
+6. Confirm the build is under Apple ID **6807574028**, not Tableside.
 
 ## Local fallback (not the recurring path)
 

@@ -26,6 +26,7 @@ cd "$ROOT"
 
 echo "=== Boutique Journal ci_post_clone ==="
 echo "ROOT=${ROOT}"
+"${SCRIPT_DIR}/verify_info_plist.sh" "$ROOT/ios/App/App/Info.plist"
 echo "CI_WORKFLOW=${CI_WORKFLOW:-unset}"
 echo "CI_BRANCH=${CI_BRANCH:-unset}"
 echo "CI_BUILD_NUMBER=${CI_BUILD_NUMBER:-unset}"
