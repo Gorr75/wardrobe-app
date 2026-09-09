@@ -19,6 +19,7 @@ On Cloud, `CI_BUILD_NUMBER` is written to both `CFBundleVersion` and the Setting
 | Contacts import for staff | Staff form → **Import from Contacts** (iOS only) |
 | Theme picker (Current / Light / Midnight appearance cards) | Settings → Theme |
 | `capacitor-native` layout CSS | Already in `src/tableside.css` |
+| Black-screen safeguards | `launchAutoHide: false`, hide splash after first paint, `#100e0c` first-paint + window background, `contentInset: never`, `ci_post_clone` builds `ios/App/App/public` and `verify_ios_web_assets.sh` refuses an empty bundle |
 
 ## Icons
 

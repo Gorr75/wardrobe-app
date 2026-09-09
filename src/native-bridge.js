@@ -7,9 +7,23 @@ import { SplashScreen } from '@capacitor/splash-screen';
 
 const isNative = Capacitor.isNativePlatform();
 
+function hideNativeSplash() {
+  if (!isNative) return Promise.resolve();
+  return SplashScreen.hide({ fadeOutDuration: 180 }).catch(() => {});
+}
+
 if (isNative) {
   document.documentElement.classList.add('capacitor-native');
-  SplashScreen.hide().catch(() => {});
+  const hideAfterPaint = () => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        hideNativeSplash();
+      });
+    });
+  };
+  if (document.readyState === 'complete') hideAfterPaint();
+  else window.addEventListener('load', hideAfterPaint, { once: true });
+  setTimeout(() => hideNativeSplash(), 2800);
 }
 
 function isShareCancel(err) {
@@ -53,6 +67,8 @@ async function pickContactNative() {
 
 window.BoutiqueNative = {
   isNative,
+
+  hideSplash: hideNativeSplash,
 
   hapticLight() {
     if (!isNative) return Promise.resolve();

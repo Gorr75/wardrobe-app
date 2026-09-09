@@ -183,6 +183,11 @@
   margin-top: 0;
 }
 
+.list-section-header {
+  padding-bottom: 8px;
+  border-bottom: 0.5px solid var(--border);
+}
+
 .purchase-list-card {
   padding: 12px 14px;
 }

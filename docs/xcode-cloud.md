@@ -29,10 +29,10 @@ On every Cloud action, Xcode Cloud runs:
    - Installs Node 22 if the image does not already have Node ≥ 20 (official tarball first; Homebrew is a fallback and must not abort the script)
    - If `CI_BUILD_NUMBER` is set: stamps `APP_BUILD` in `src/backup.js` and `CURRENT_PROJECT_VERSION` in the pbxproj (marketing version stays **1.0**)
    - `npm ci` (keeps `package-lock.json`; cache under the repo / tmp — does not write `~/.npmrc`). If the host `@rollup/rollup-*` optional binary is missing — typical on Xcode Cloud after a Linux-generated lockfile — install that platform package explicitly (`npm install @rollup/rollup-darwin-arm64@<lockfile rollup version> --no-save`), restore any lock/package.json edits, then fall back to `--force`, `npm install --include=optional --no-save`, and `npm rebuild`. A missing binding is classified only when `require('rollup/dist/native.js')` fails with `MODULE_NOT_FOUND`; a failed `npm ci` / `npm install`, or a dlopen/`other-error` load failure, is reported as that error — not as the optional-deps bug.
-   - Vite build, then `npx cap copy ios` + `npx cap update ios` (Capacitor 8.5.1 has no `--no-build` on `cap sync`)
+   - Vite build (requires `dist/index.html`), then `npx cap copy ios` + `npx cap update ios` (Capacitor 8.5.1 has no `--no-build` on `cap sync`). `verify_ios_web_assets.sh` requires `ios/App/App/public/index.html` plus JS so Archive cannot ship a black WKWebView
    - Restores `Package.resolved` if `cap sync` deletes it or drops a required pin
    - Logs Capacitor native pin vs `package-lock.json` and **does not fail** on mismatch
-2. **`ci_pre_xcodebuild.sh`**: re-checks Info.plist keys, `Package.resolved`, and `ios/App/App/public/index.html`
+2. **`ci_pre_xcodebuild.sh`**: re-checks Info.plist keys, `Package.resolved`, and `verify_ios_web_assets.sh` (`ios/App/App/public`)
 3. **`xcodebuild` Archive**
 4. **`ci_post_xcodebuild.sh`**: logs archive version strings and **always exits 0**
 
