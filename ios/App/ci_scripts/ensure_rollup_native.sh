@@ -59,9 +59,13 @@ process.stdout.write("@rollup/rollup-" + base);
 '
 }
 
-# Classify why require("rollup/dist/native.js") failed.
+# Classify require("rollup/dist/native.js").
 # Prints one of: ok | missing-binding | rollup-not-installed | other-error
 # Details go to stderr. Exit 0 only for "ok".
+#
+# rollup wraps every load failure as the npm optional-deps message, including
+# dlopen errors. Use error.cause.code so a failed require is not reported as
+# "binding missing" when the package is present but unloadable.
 rollup_native_status() {
   local pkg_id="${1:-}"
   if [[ -z "$pkg_id" ]]; then
@@ -73,8 +77,6 @@ const path = require("path");
 const pkgId = process.env.ROLLUP_NATIVE_PKG;
 const root = process.cwd();
 const nativeJs = path.join(root, "node_modules", "rollup", "dist", "native.js");
-const pkgDir = path.join(root, "node_modules", ...pkgId.split("/"));
-const localNode = path.join(root, "node_modules", "rollup", "rollup." + pkgId.replace("@rollup/rollup-", "") + ".node");
 
 if (!fs.existsSync(nativeJs)) {
   console.log("rollup-not-installed");
@@ -82,22 +84,27 @@ if (!fs.existsSync(nativeJs)) {
   process.exit(1);
 }
 
-const bindingOnDisk = fs.existsSync(pkgDir) || fs.existsSync(localNode);
-if (!bindingOnDisk) {
-  console.log("missing-binding");
-  console.error("rollup native package is not on disk: " + pkgId);
-  process.exit(1);
-}
-
 try {
   require(nativeJs);
   console.log("ok");
 } catch (error) {
-  const msg = [error && error.message, error && error.cause && error.cause.message]
-    .filter(Boolean)
-    .join("\n");
-  console.log("other-error");
-  console.error(msg || String(error));
+  const cause = error && error.cause;
+  const causeCode = cause && cause.code;
+  const causeMsg = (cause && cause.message) || "";
+  const msg = (error && error.message) || String(error);
+  // rollup always prefixes "Cannot find module @rollup/rollup-..." — ignore that
+  // wrapper and trust MODULE_NOT_FOUND on the cause (package truly absent).
+  const missingModule =
+    causeCode === "MODULE_NOT_FOUND" ||
+    (!cause && /Cannot find module .*@rollup\/rollup-/.test(msg));
+  if (missingModule) {
+    console.log("missing-binding");
+    console.error(causeMsg || ("rollup native package is not loadable: " + pkgId));
+  } else {
+    console.log("other-error");
+    console.error(msg);
+    if (causeMsg) console.error(causeMsg);
+  }
   process.exit(1);
 }
 '
@@ -113,16 +120,17 @@ rollup_installed_version() {
   node --input-type=commonjs -e '
 const fs = require("fs");
 const path = require("path");
+try {
+  const lock = JSON.parse(fs.readFileSync(path.join(process.cwd(), "package-lock.json"), "utf8"));
+  const fromLock = lock.packages && lock.packages["node_modules/rollup"] && lock.packages["node_modules/rollup"].version;
+  if (fromLock) {
+    process.stdout.write(fromLock);
+    process.exit(0);
+  }
+} catch { /* fall through */ }
 const pkgPath = path.join(process.cwd(), "node_modules", "rollup", "package.json");
 if (fs.existsSync(pkgPath)) {
   process.stdout.write(JSON.parse(fs.readFileSync(pkgPath, "utf8")).version || "");
-  process.exit(0);
-}
-try {
-  const lock = JSON.parse(fs.readFileSync(path.join(process.cwd(), "package-lock.json"), "utf8"));
-  process.stdout.write((lock.packages && lock.packages["node_modules/rollup"] && lock.packages["node_modules/rollup"].version) || "");
-} catch {
-  process.stdout.write("");
 }
 '
 }
@@ -143,11 +151,13 @@ _restore_npm_manifests() {
 _npm_install_platform_binding() {
   local spec="$1"
   local extra="${2:-}"
-  echo "Installing ${spec} explicitly (${extra:-no-save, keep lock})"
-  # --no-save / --no-package-lock: do not rewrite manifests. Env vars avoid ~/.npmrc.
+  echo "Installing ${spec} explicitly (${extra:-no-save; lock restored after})"
+  # --no-save: do not add to package.json. Keep reading package-lock.json so npm
+  # does not re-resolve vite/rollup. Restore the lock after if npm writes it.
+  # Do not write ~/.npmrc (use an env var, not `npm config set`).
   # shellcheck disable=SC2086
-  npm_config_save=false npm_config_package_lock=false \
-    npm install "$spec" --no-save --no-package-lock --no-audit --no-fund ${extra}
+  npm_config_save=false \
+    npm install "$spec" --no-save --no-audit --no-fund ${extra}
 }
 
 ensure_rollup_native() {
@@ -239,8 +249,8 @@ ensure_rollup_native() {
 
   echo "WARN: trying npm install --include=optional (still keeping the lockfile)"
   set +e
-  npm_config_save=false npm_config_package_lock=false \
-    npm install --include=optional --no-save --no-package-lock --no-audit --no-fund
+  npm_config_save=false \
+    npm install --include=optional --no-save --no-audit --no-fund
   npm_status=$?
   set -e
   _restore_npm_manifests "$lock_backup" "$json_backup"
