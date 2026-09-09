@@ -34,12 +34,7 @@ echo "ROOT=${ROOT}"
 "${SCRIPT_DIR}/verify_info_plist.sh" "$ROOT/ios/App/App/Info.plist"
 
 RESOLVED="$ROOT/ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
-if [[ ! -f "$RESOLVED" ]]; then
-  echo "ERROR: Package.resolved missing at ${RESOLVED}" >&2
-  echo "Xcode Cloud disables automatic SPM resolution and requires this file." >&2
-  exit 1
-fi
-echo "Package.resolved present ($(wc -c < "$RESOLVED" | tr -d ' ') bytes)"
+"${SCRIPT_DIR}/verify_package_resolved.sh" "$RESOLVED"
 
 echo "CI_WORKFLOW=${CI_WORKFLOW:-unset}"
 echo "CI_BRANCH=${CI_BRANCH:-unset}"
@@ -66,25 +61,47 @@ else
   echo "CI_BUILD_NUMBER unset — leaving repo APP_BUILD / CURRENT_PROJECT_VERSION as committed"
 fi
 
-npm_ci_with_retry() {
+# Vite/rollup 4 loads a platform optional native binding. npm ci from a
+# Linux-generated lockfile can omit @rollup/rollup-darwin-arm64 on Xcode Cloud
+# (npm optional-deps bug). Do not delete package-lock.json.
+rollup_native_ok() {
+  node --input-type=commonjs -e "require('rollup/dist/native.js')" >/dev/null 2>&1
+}
+
+npm_install_for_cloud() {
   local attempt=1
   local max=3
   while true; do
     echo "Installing npm dependencies (attempt ${attempt}/${max})"
+    rm -rf node_modules
     if npm ci; then
+      if rollup_native_ok; then
+        echo "npm ci OK; rollup native binding present"
+        return 0
+      fi
+      echo "WARN: npm ci succeeded but rollup native binding is missing (optional-deps bug)"
+    else
+      echo "WARN: npm ci failed (attempt ${attempt}/${max})"
+    fi
+
+    echo "Retrying with rm -rf node_modules && npm i (keeping package-lock.json)"
+    rm -rf node_modules
+    if npm i --no-audit --no-fund && rollup_native_ok; then
+      echo "npm i OK; rollup native binding present"
       return 0
     fi
+
     if [[ "$attempt" -ge "$max" ]]; then
-      echo "ERROR: npm ci failed after ${max} attempts" >&2
+      echo "ERROR: npm install failed after ${max} attempts (rollup native still missing or install error)" >&2
       return 1
     fi
-    echo "WARN: npm ci failed (attempt ${attempt}/${max}); retrying in 5s"
+    echo "WARN: npm install attempt ${attempt}/${max} failed; retrying in 5s"
     attempt=$((attempt + 1))
     sleep 5
   done
 }
 
-npm_ci_with_retry
+npm_install_for_cloud
 
 log_native_vs_lock() {
   local lock_ios=""
@@ -116,8 +133,8 @@ log_native_vs_lock
 RESOLVED_BACKUP="$(mktemp)"
 cp "$RESOLVED" "$RESOLVED_BACKUP"
 restore_package_resolved() {
-  if [[ ! -f "$RESOLVED" ]]; then
-    echo "WARN: Package.resolved missing after cap sync; restoring committed pin file"
+  if [[ ! -f "$RESOLVED" ]] || ! "${SCRIPT_DIR}/verify_package_resolved.sh" "$RESOLVED" >/dev/null 2>&1; then
+    echo "WARN: Package.resolved missing or incomplete after cap sync; restoring committed pin file"
     mkdir -p "$(dirname "$RESOLVED")"
     cp "$RESOLVED_BACKUP" "$RESOLVED"
   fi
@@ -158,10 +175,7 @@ if [[ "$SYNC_STATUS" -ne 0 ]]; then
   echo "Web assets are present; continuing so a native≠lock mismatch cannot fail Xcode Cloud."
 fi
 
-if [[ ! -f "$RESOLVED" ]]; then
-  echo "ERROR: Package.resolved still missing at ${RESOLVED} after restore" >&2
-  exit 1
-fi
+"${SCRIPT_DIR}/verify_package_resolved.sh" "$RESOLVED"
 
 echo "ci_post_clone complete"
 exit 0
