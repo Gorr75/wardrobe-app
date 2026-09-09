@@ -628,7 +628,7 @@ function bindListBodyEvents() {
           render();
         },
         onDelete: () => {
-          confirmAction(
+          confirmDelete(
             `Delete ${memberName}?`,
             'This cannot be undone.',
             async () => {
@@ -655,15 +655,15 @@ function bindListBodyEvents() {
         onVisit: async () => {
           logVisit(storeId, '');
           await maybeAutoExport(state.data, 'visit');
+          alert('Visit logged.');
           refreshListBody();
         },
         onDelete: () => {
-          const isCustom = isCustomStore(store);
-          confirmAction(
-            isCustom ? `Delete ${store.name}?` : `Remove ${store.name}?`,
-            'This removes the boutique and all linked staff, visits, and purchases.',
+          confirmDelete(
+            `Delete ${store.name}?`,
+            'This removes the boutique and all its staff.',
             async () => {
-              removeBoutiqueFromJournal(state.data, storeId, { isCustom });
+              removeBoutiqueFromJournal(state.data, storeId, { isCustom: isCustomStore(store) });
               saveData(state.data);
               refreshListBody();
             },
@@ -709,6 +709,7 @@ function logVisit(storeId, note) {
     note: note.trim(),
   });
   saveData(state.data);
+  hapticLight();
 }
 
 function addPastVisit(storeId, dateValue, note) {
@@ -909,7 +910,7 @@ function renderStoreDetail(storeId) {
       onDelete: () => {
         const id = editBtn?.dataset.id;
         if (!id) return;
-        confirmAction(`Delete ${memberName}?`, 'This cannot be undone.', async () => {
+        confirmDelete(`Delete ${memberName}?`, 'This cannot be undone.', async () => {
           deleteStaff(state.data, id);
           saveData(state.data);
           renderStoreDetail(storeId);
@@ -1625,7 +1626,11 @@ function renderStaffForm(storeId, editStaffId) {
   });
 }
 
-function confirmAction(title, message, onConfirm, confirmLabel = 'Confirm') {
+function confirmDelete(title, message, onConfirm, confirmLabel = 'Delete') {
+  confirmAction(title, message, onConfirm, confirmLabel, 'Could not delete. Please try again.');
+}
+
+function confirmAction(title, message, onConfirm, confirmLabel = 'Confirm', errorMessage = 'Something went wrong. Please try again.') {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
@@ -1653,7 +1658,7 @@ function confirmAction(title, message, onConfirm, confirmLabel = 'Confirm') {
       await onConfirm();
       close();
     } catch (err) {
-      alert('Something went wrong. Please try again.');
+      alert(errorMessage);
       console.error(err);
     }
   });

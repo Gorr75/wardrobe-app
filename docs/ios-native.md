@@ -15,7 +15,7 @@ On Cloud, `CI_BUILD_NUMBER` is written to both `CFBundleVersion` and the Setting
 | Capacitor shell + `cap:sync` | `capacitor.config.json`, `package.json` scripts, committed `ios/` |
 | Xcode Cloud → TestFlight Internal | `ci_scripts/`, [docs/xcode-cloud.md](xcode-cloud.md) |
 | Native share (boutique text, lists, backup) | `src/native-bridge.js` → Share + Filesystem |
-| Haptics on swipe delete / visit | `src/native.js`, `src/app.js` |
+| Haptics on swipe delete / visit | `src/native.js`, `src/app.js` — light impact on Visit/Delete tap; Visit also impacts after the visit is saved (Tableside timing) |
 | Contacts import for staff | Staff form → **Import from Contacts** (iOS only) |
 | Theme picker (Current / Light / Midnight appearance cards) | Settings → Theme |
 | `capacitor-native` layout CSS | Already in `src/tableside.css` |
