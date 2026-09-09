@@ -25,12 +25,12 @@ On every Cloud action, Xcode Cloud runs:
 
 1. **`ci_post_clone.sh`** (repo-root `ci_scripts/` and the same files next to `App.xcodeproj` in `ios/App/ci_scripts/`):
    - Verifies `Info.plist` still has contacts/camera/photo usage strings (blocks a repeat of Error 90683)
-   - Verifies the workspace `Package.resolved` Cloud needs for `capacitor-swift-pm`
+   - Verifies the workspace `Package.resolved` Cloud needs for `capacitor-swift-pm` **and** `ion-ios-filesystem` (Filesystem plugin transitive)
    - Installs Node 22 if the image does not already have Node ≥ 20 (official tarball first; Homebrew is a fallback and must not abort the script)
    - If `CI_BUILD_NUMBER` is set: stamps `APP_BUILD` in `src/backup.js` and `CURRENT_PROJECT_VERSION` in the pbxproj (marketing version stays **1.0**)
-   - `npm ci` (retries; cache under the repo / tmp — does not write `~/.npmrc`)
+   - `npm ci`, then if the rollup darwin-arm64 optional binary is missing, `rm -rf node_modules && npm i` (keeps `package-lock.json`; cache under the repo / tmp — does not write `~/.npmrc`)
    - Vite build, then `npx cap copy ios` + `npx cap update ios` (Capacitor 8.5.1 has no `--no-build` on `cap sync`)
-   - Restores `Package.resolved` if `cap sync` deletes it
+   - Restores `Package.resolved` if `cap sync` deletes it or drops a required pin
    - Logs Capacitor native pin vs `package-lock.json` and **does not fail** on mismatch
 2. **`ci_pre_xcodebuild.sh`**: re-checks Info.plist keys, `Package.resolved`, and `ios/App/App/public/index.html`
 3. **`xcodebuild` Archive**
@@ -65,8 +65,12 @@ Still confirm:
 4. Grant Xcode Cloud access to **`Gorr75/wardrobe-app` only**. Do not attach `Gorr75/repo`.
 5. When Cloud asks to use source-control credentials for Swift packages, **grant** at least:
    - `https://github.com/ionic-team/capacitor-swift-pm` (exact `8.5.1` via `CapApp-SPM/Package.swift`)
+   - `https://github.com/ionic-team/ion-ios-filesystem` (`from: "1.1.1"` via `@capacitor/filesystem` 8.1.3 `Package.swift`; resolved **1.1.4**)
    - Any additional GitHub SPM URLs Cloud lists on the first failed resolve
-6. `Package.resolved` is committed at `ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved` (the path Xcode Cloud requires when automatic resolution is disabled). Pin is `capacitor-swift-pm` **8.5.1** (`6afa7424fd2fcd8ca1e577478e8a00af284b7e82`). After changing Capacitor or `CapApp-SPM/Package.swift`, regenerate and commit that file from Xcode (File → Packages → Resolve Package Versions).
+6. `Package.resolved` is committed at `ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved` (the path Xcode Cloud requires when automatic resolution is disabled). Pins:
+   - `capacitor-swift-pm` **8.5.1** (`6afa7424fd2fcd8ca1e577478e8a00af284b7e82`)
+   - `ion-ios-filesystem` **1.1.4** (`56bd6f9e77cb4f2269c03f2d92a9fe58fe168a1c`) — required by `@capacitor/filesystem`; no other plugin adds a remote SPM dep
+   After changing Capacitor or `CapApp-SPM/Package.swift`, regenerate and commit that file from Xcode (File → Packages → Resolve Package Versions).
 
 ## Workflow settings to create (exact)
 
