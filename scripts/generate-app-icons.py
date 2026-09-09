@@ -10,10 +10,6 @@ from PIL import Image, ImageDraw
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC = ROOT / "public"
 IOS_ICONSET = ROOT / "ios" / "App" / "App" / "Assets.xcassets" / "AppIcon.appiconset"
-IOS_SPLASH = ROOT / "ios" / "App" / "App" / "Assets.xcassets" / "Splash.imageset"
-SPLASH_SIZE = 2732
-# Matches capacitor.config.json ios.backgroundColor / theme-color #100e0c
-SPLASH_BG = (16, 14, 12)
 
 SIZE = 1024
 CANVAS = SIZE * 2
@@ -120,9 +116,6 @@ def main():
     save_png(PUBLIC / "apple-touch-icon.png", default_icon, 180)
     save_png(PUBLIC / "icon-192.png", default_icon, 192)
     save_png(PUBLIC / "icon-512.png", default_icon, 512)
-    # Same 1024 RGB master Magnus can upload in App Store Connect → App Information
-    # if the listing still shows Apple's grey wireframe before a Cloud build processes.
-    save_png(PUBLIC / "app-store-icon-1024.png", default_icon, 1024)
 
     if IOS_ICONSET.exists():
         save_png(IOS_ICONSET / "AppIcon-512@2x.png", default_icon, 1024)
@@ -130,20 +123,6 @@ def main():
         save_png(IOS_ICONSET / "AppIcon-tinted.png", tinted_icon, 1024)
     else:
         print("iOS icon set not found — run `npx cap add ios` first, then re-run `npm run icons`.")
-
-    if IOS_SPLASH.exists():
-        splash = Image.new("RGB", (SPLASH_SIZE, SPLASH_SIZE), SPLASH_BG)
-        plate = default_icon.resize((640, 640), Image.Resampling.LANCZOS)
-        origin = ((SPLASH_SIZE - 640) // 2, (SPLASH_SIZE - 640) // 2)
-        splash.paste(plate, origin)
-        for name in (
-            "splash-2732x2732.png",
-            "splash-2732x2732-1.png",
-            "splash-2732x2732-2.png",
-        ):
-            save_png(IOS_SPLASH / name, splash)
-    else:
-        print("iOS splash set not found — skipped.")
 
     print("Done.")
 

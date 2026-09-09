@@ -109,21 +109,12 @@ Before the first Cloud upload, set the workflow’s next build number **above th
 4. If signing fails: confirm the App ID, the team on the App target, and that Cloud is managing certificates for **this** bundle ID.
 5. Confirm TestFlight Internal **BU Butiksapp** shows **Boutique Journal 1.0 (CI_BUILD_NUMBER)** (processing succeeded — not another 90683) and Settings → About shows the same build.
 6. Confirm the build is under Apple ID **6807574028**, not Tableside.
-7. Confirm the Home-screen / TestFlight icon is the gold plate (hanger + bag), not Capacitor’s blue “C” and not Apple’s grey wireframe. The listing tile in Connect is **separate** — see below.
 
 ## App Store Connect listing icon (grey wireframe)
 
-ASC’s app tile is a **marketing asset**. It does not update just because `AppIcon.appiconset` is in git.
+Keep the committed gold plate / hanger+bag `AppIcon.appiconset`. Do not redesign it.
 
-| Surface | Where it comes from |
-|---|---|
-| iPhone Home Screen / TestFlight | `AppIcon` in the **binary** (`ios/App/App/Assets.xcassets/AppIcon.appiconset`, 1024 RGB, no alpha). Cloud Archive picks this up automatically. |
-| Launch screen | `Splash.imageset` (dark plate; not the Capacitor template) |
-| **App Store Connect listing / ASC header** | A processed build **or** a 1024×1024 upload under **App Information** |
-
-Until a Cloud (or local) build **finishes processing**, or Magnus uploads the 1024, Connect keeps Apple’s generic grey wireframe. That is expected after Build 1 failed.
-
-**Upload now (optional):** App Store Connect → Boutique Journal (6807574028) → **App Information** → App Icon → [`public/app-store-icon-1024.png`](../public/app-store-icon-1024.png) (same art as `AppIcon-512@2x.png`).
+ASC’s header tile is a **marketing asset**. It does not change just because the catalog is in git. Home Screen / TestFlight use the binary AppIcon (Cloud picks it up automatically). The Connect listing stays Apple’s grey wireframe until a build **finishes processing**, or Magnus uploads `ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png` under **App Information**. That is expected after Build 1 failed.
 
 ## Local fallback (not the recurring path)
 
