@@ -12,7 +12,7 @@ export const APP_BUILD = 3;
 export const BACKUP_REMINDER_DAYS = 30;
 
 export function appVersionLabel() {
-  return `Version ${APP_VERSION} build ${APP_BUILD}`;
+  return `${APP_VERSION} (${APP_BUILD})`;
 }
 
 let weeklyAutoExportDoneThisSession = false;

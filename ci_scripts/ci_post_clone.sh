@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Xcode Cloud post-clone for Boutique Journal (Gorr75/wardrobe-app).
 # Mirrors Tableside's proven loop: stamp CI_BUILD_NUMBER onto native + JS
-# About strings, then npm ci and cap:sync, before xcodebuild.
+# Settings version strings, then npm ci and cap:sync, before xcodebuild.
 #
 # Do not hard-fail when Capacitor native pins differ from package-lock.
 # Do not stamp versions from an Xcode Run Script.

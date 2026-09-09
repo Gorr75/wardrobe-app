@@ -17,7 +17,7 @@ This is the **preferred recurring TestFlight path** for Boutique Journal. It is 
 
 Local TestFlight **1.0 (3)** failed ITC processing with **Error 90683** (missing `NSContactsUsageDescription`). The committed `ios/App/App/Info.plist` now includes contacts, camera, and photo-library usage strings; `ci_post_clone` refuses to continue if those keys disappear.
 
-Local `ios/App/App.xcodeproj` may keep a different `CURRENT_PROJECT_VERSION` than Settings → About. On Cloud, `CI_BUILD_NUMBER` rewrites both **before** `cap:sync`.
+Local `ios/App/App.xcodeproj` may keep a different `CURRENT_PROJECT_VERSION` than the Settings version line. On Cloud, `CI_BUILD_NUMBER` rewrites both **before** `cap:sync`.
 
 ## What Cloud does (already in this repo)
 
@@ -111,7 +111,7 @@ Before the first Cloud upload, set the workflow’s next build number **above th
 2. Confirm the workflow run executes **ci_post_clone** (Node + stamp + `cap:sync`) before Archive.
 3. If SPM fetch fails: confirm `Package.resolved` is still at `ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`, grant the GitHub package(s) listed in the Cloud log, and retry.
 4. If signing fails: confirm the App ID, the team on the App target, and that Cloud is managing certificates for **this** bundle ID.
-5. Confirm TestFlight Internal **BU Butiksapp** shows **Boutique Journal 1.0 (CI_BUILD_NUMBER)** (processing succeeded — not another 90683) and Settings → About shows the same build.
+5. Confirm TestFlight Internal **BU Butiksapp** shows **Boutique Journal 1.0 (CI_BUILD_NUMBER)** (processing succeeded — not another 90683) and Settings shows the same compact `1.0 (CI_BUILD_NUMBER)` line.
 6. Confirm the build is under Apple ID **6807574028**, not Tableside.
 
 ## App Store Connect listing icon (grey wireframe)

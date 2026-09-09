@@ -179,6 +179,10 @@
   margin-top: 8px;
 }
 
+.settings-info-toggle {
+  margin-top: 0;
+}
+
 .purchase-list-card {
   padding: 12px 14px;
 }

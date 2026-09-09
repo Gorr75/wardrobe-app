@@ -23,7 +23,6 @@ import {
   storeNavActionsMarkup,
 } from './maps.js';
 import {
-  APP_VERSION,
   appVersionLabel,
   BACKUP_REMINDER_DAYS,
   checkWeeklyAutoBackup,
@@ -108,6 +107,20 @@ function setTheme(theme) {
 
 function applyStoredTheme() {
   document.documentElement.setAttribute('data-theme', getTheme());
+}
+
+function appearanceCardMarkup(theme, id, title, hint) {
+  return `
+    <button type="button" class="appearance-card ${theme === id ? 'selected' : ''}" data-appearance="${id}">
+      <div class="appearance-swatch appearance-swatch-${id}" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+      <div class="appearance-card-copy">
+        <strong>${title}</strong>
+        <p>${hint}</p>
+      </div>
+      <span class="appearance-check" aria-hidden="true">✓</span>
+    </button>`;
 }
 
 const state = {
@@ -1749,29 +1762,28 @@ function renderSettingsView() {
   app.innerHTML = `
     <header class="header">
       <button class="back-btn" id="back-btn" type="button" aria-label="Back">‹</button>
-      <h1>Settings</h1>
+      <h1>
+        <span class="app-title-block">
+          <span>Settings</span>
+          <span class="version-badge">${escapeHtml(appVersionLabel())}</span>
+        </span>
+      </h1>
     </header>
     <main class="content">
       <div class="section settings-section">
-        <div class="section-title">About</div>
+        <div class="section-title">Theme</div>
         <div class="card settings-card">
-          <div class="card-row">
-            <span class="label">Boutique Journal</span>
-            <span class="value">${escapeHtml(appVersionLabel())}</span>
+          <div class="appearance-options">
+            ${appearanceCardMarkup(theme, 'current', 'Current', 'Warm gold dark')}
+            ${appearanceCardMarkup(theme, 'light', 'Light', 'Cream paper')}
+            ${appearanceCardMarkup(theme, 'midnight', 'Midnight', 'Cool night')}
           </div>
         </div>
       </div>
       <div class="section settings-section">
-        <div class="section-title">Display</div>
+        <div class="section-title">Show / hide info</div>
         <div class="card settings-card">
-          <span class="sort-label">Theme</span>
-          <div class="sort-options settings-toggle-row">
-            <button type="button" class="sort-chip ${theme === 'current' ? 'selected' : ''}" data-theme="current">Current</button>
-            <button type="button" class="sort-chip ${theme === 'light' ? 'selected' : ''}" data-theme="light">Light</button>
-            <button type="button" class="sort-chip ${theme === 'midnight' ? 'selected' : ''}" data-theme="midnight">Midnight</button>
-          </div>
-          <p class="data-hint">Show the top stats bar (Visited, Staff, Visits, Boutiques) and quick shortcuts to visited boutiques on the Boutiques tab. Hide to save space.</p>
-          <div class="sort-options settings-toggle-row">
+          <div class="sort-options settings-toggle-row settings-info-toggle">
             <button type="button" class="sort-chip ${showVisitedMenu ? 'selected' : ''}" data-visited-menu="1">Show</button>
             <button type="button" class="sort-chip ${!showVisitedMenu ? 'selected' : ''}" data-visited-menu="0">Hide</button>
           </div>
@@ -1843,9 +1855,9 @@ function renderSettingsView() {
     });
   });
 
-  app.querySelectorAll('[data-theme]').forEach((chip) => {
-    chip.addEventListener('click', () => {
-      setTheme(chip.dataset.theme);
+  app.querySelectorAll('[data-appearance]').forEach((card) => {
+    card.addEventListener('click', () => {
+      setTheme(card.dataset.appearance);
       renderSettingsView();
     });
   });

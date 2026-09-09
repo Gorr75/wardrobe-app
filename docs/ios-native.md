@@ -6,7 +6,7 @@ Recurring TestFlight Internal uploads go through **Xcode Cloud**, not a local Ar
 
 See **[docs/xcode-cloud.md](xcode-cloud.md)** for ASC inventory (Apple ID **6807574028**), creating the **Boutique App Store** workflow (scheme **App**, branch **main**, TestFlight Internal group **BU Butiksapp**), and signing / SPM grant notes.
 
-On Cloud, `CI_BUILD_NUMBER` is written to both `CFBundleVersion` and Settings → About (`APP_BUILD` in `src/backup.js`) in `ci_post_clone` **before** `cap:sync`. Marketing version stays **1.0**.
+On Cloud, `CI_BUILD_NUMBER` is written to both `CFBundleVersion` and the Settings version line (`APP_BUILD` in `src/backup.js`) in `ci_post_clone` **before** `cap:sync`. Marketing version stays **1.0**. The Settings header shows a compact `{APP_VERSION} ({APP_BUILD})` badge, e.g. `1.0 (5)`.
 
 ## Native features (Tableside parity)
 
@@ -17,7 +17,7 @@ On Cloud, `CI_BUILD_NUMBER` is written to both `CFBundleVersion` and Settings �
 | Native share (boutique text, lists, backup) | `src/native-bridge.js` → Share + Filesystem |
 | Haptics on swipe delete / visit | `src/native.js`, `src/app.js` |
 | Contacts import for staff | Staff form → **Import from Contacts** (iOS only) |
-| Theme picker (Current / Light / Midnight) | Settings → Display |
+| Theme picker (Current / Light / Midnight appearance cards) | Settings → Theme |
 | `capacitor-native` layout CSS | Already in `src/tableside.css` |
 
 ## Icons
@@ -69,8 +69,8 @@ Committed in `ios/App/App/Info.plist`. Local TestFlight **1.0 (3)** failed ITC *
 
 | Field | Local repo | Xcode Cloud |
 |---|---|---|
-| Marketing / About `APP_VERSION` | `1.0` in `src/backup.js` | Left at **1.0** |
-| About `APP_BUILD` | `src/backup.js` (currently 3) | Rewritten from `CI_BUILD_NUMBER` |
+| Marketing / Settings `APP_VERSION` | `1.0` in `src/backup.js` | Left at **1.0** |
+| Settings `APP_BUILD` | `src/backup.js` (currently 3) | Rewritten from `CI_BUILD_NUMBER` |
 | Xcode Version | `MARKETING_VERSION` = 1.0 | Left at **1.0** |
 | Xcode Build | `CURRENT_PROJECT_VERSION` (local number may differ) | Rewritten from `CI_BUILD_NUMBER` |
 

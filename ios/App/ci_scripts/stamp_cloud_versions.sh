@@ -3,7 +3,7 @@
 #
 # Marketing version (CFBundleShortVersionString / APP_VERSION) stays 1.0.
 # CI_BUILD_NUMBER becomes CFBundleVersion (CURRENT_PROJECT_VERSION) and
-# the JS About build (APP_BUILD in src/backup.js).
+# the JS Settings version line (APP_BUILD in src/backup.js).
 #
 # Usage: stamp_cloud_versions.sh <repo-root> <build-number>
 # Do not add an Xcode "Stamp CFBundleVersion" Run Script — Cloud mutable-output
@@ -58,7 +58,7 @@ if n_build != 1:
 version_match = re.search(r"export const APP_VERSION = '([^']+)';", backup2)
 if not version_match:
     raise SystemExit(f"Failed to find APP_VERSION in {backup_path}")
-print(f"About string will read: Version {version_match.group(1)} build {build}")
+print(f"Settings version will read: {version_match.group(1)} ({build})")
 backup_path.write_text(backup2)
 
 pbx = pbx_path.read_text()
