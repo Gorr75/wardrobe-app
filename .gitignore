@@ -4,3 +4,4 @@ dist/
 *.local
 .env
 .env.*
+.npm-cloud-cache/

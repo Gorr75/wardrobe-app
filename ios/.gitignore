@@ -5,6 +5,9 @@ App/App/public
 DerivedData
 xcuserdata
 
+# Keep App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+# tracked — Xcode Cloud disables automatic SPM resolution and requires it.
+
 # Cordova plugins for Capacitor
 capacitor-cordova-ios-plugins
 
