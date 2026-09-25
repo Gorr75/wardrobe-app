@@ -1,12 +1,14 @@
 import { ALL_CITIES_MAP, CITIES, getCity, getStoreInstagramLabel, getStoreById, getStoresForFilter, isCustomStore } from './cities.js';
 import {
   bindChromeAutoHide,
+  bindKeyboardInset,
   brandIconClass,
   brandInitial,
   cityFilterMarkup,
   escapeHtml,
   headerActionsMarkup,
   homeTabsMarkup,
+  resetPageScroll,
   listHeroMarkup,
   visitedStoresMenuMarkup,
 } from './frame.js';
@@ -64,6 +66,7 @@ import {
   deleteStaff,
   DEFAULT_CITY_ID,
   geocodeAddress,
+  emptyData,
   getLastVisitAt,
   getPurchasesForStore,
   getShowVisitedMenu,
@@ -199,6 +202,7 @@ function formatRelativeVisit(ts) {
 }
 
 async function render() {
+  resetPageScroll();
   switch (state.route.view) {
     case 'list':
       await renderList();
@@ -1777,6 +1781,13 @@ function renderSettingsView() {
         </div>
       </div>
       <div class="section settings-section">
+        <div class="section-title">Journal</div>
+        <div class="card settings-card">
+          <p class="data-hint">Removes staff, visits, purchases, notes, sizes, and boutiques you added. The built-in catalogue stays. Export a backup first if you need a copy.</p>
+          <button class="btn btn-delete full-width settings-action-btn" id="clear-journal-btn" type="button">Clear journal</button>
+        </div>
+      </div>
+      <div class="section settings-section">
         <div class="section-title">About</div>
         <div class="card settings-card settings-about">
           <a class="btn btn-secondary full-width settings-link" id="support-link" href="${escapeHtml(SUPPORT_URL)}" target="_blank" rel="noopener noreferrer">Support</a>
@@ -1813,6 +1824,21 @@ function renderSettingsView() {
   });
 
   app.querySelector('#export-btn')?.addEventListener('click', () => exportAllData(state.data));
+
+  app.querySelector('#clear-journal-btn')?.addEventListener('click', () => {
+    confirmAction(
+      'Clear journal?',
+      'This permanently removes staff, visits, purchases, notes, sizes, and boutiques you added. The built-in catalogue stays.',
+      () => {
+        state.data = emptyData();
+        saveData(state.data);
+        state.listSearch = '';
+        state.route = { view: 'list' };
+        render();
+      },
+      'Clear journal',
+    );
+  });
 
   app.querySelector('#share-list-export')?.addEventListener('click', async () => {
     const scope = app.querySelector('#share-list-scope')?.value || 'all';
@@ -1880,5 +1906,6 @@ function renderSettingsView() {
 }
 
 applyStoredTheme();
+bindKeyboardInset();
 render();
 window.BoutiqueNative?.hideSplash?.();
