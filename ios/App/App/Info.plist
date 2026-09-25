@@ -32,6 +32,8 @@
 	<string>Boutique Journal uses the camera to photograph staff, purchases, and boutiques.</string>
 	<key>NSContactsUsageDescription</key>
 	<string>Boutique Journal imports a contact to fill in staff name, phone, and email.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Boutique Journal uses your location to center the map on you and the boutiques you are visiting.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Boutique Journal can save photos you attach to staff, purchases, and boutiques.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
