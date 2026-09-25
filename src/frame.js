@@ -6,6 +6,40 @@ export function escapeHtml(text) {
   return div.innerHTML;
 }
 
+export function resetPageScroll() {
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+}
+
+export function bindKeyboardInset() {
+  const viewport = window.visualViewport;
+  if (!viewport || bindKeyboardInset.bound) return;
+  bindKeyboardInset.bound = true;
+
+  const apply = () => {
+    const active = document.activeElement;
+    const editing =
+      active &&
+      (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
+    const overlap = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+    const inset = editing && overlap > 60 ? overlap : 0;
+    document.documentElement.style.setProperty('--keyboard-inset', `${inset}px`);
+    if (!inset || !editing) return;
+    const content = document.querySelector('#app .content');
+    if (content?.contains(active)) {
+      active.scrollIntoView({ block: 'nearest' });
+    }
+  };
+
+  viewport.addEventListener('resize', apply);
+  viewport.addEventListener('scroll', apply);
+  window.addEventListener('focusin', apply);
+  window.addEventListener('focusout', () => {
+    document.documentElement.style.setProperty('--keyboard-inset', '0px');
+  });
+}
+
 export function bindChromeAutoHide(app) {
   const content = app.querySelector('.content');
   const header = app.querySelector('.header-home');
@@ -21,30 +55,34 @@ export function bindChromeAutoHide(app) {
   let lastY = content.scrollTop;
   let hidden = app.classList.contains('chrome-hidden');
   let rafPending = false;
+  let adjusting = false;
 
   function setChromeHidden(nextHidden) {
     if (nextHidden === hidden) return;
-    const headerH = header.offsetHeight || 0;
-    const delta = nextHidden ? headerH : -headerH;
+    const beforeTop = content.getBoundingClientRect().top;
+    const beforeScroll = content.scrollTop;
     if (nextHidden) app.classList.add('chrome-hidden');
     else app.classList.remove('chrome-hidden');
     hidden = nextHidden;
-    content.scrollTop = Math.max(0, content.scrollTop + delta);
+    const shift = beforeTop - content.getBoundingClientRect().top;
+    adjusting = true;
+    content.scrollTop = Math.max(0, beforeScroll - shift);
+    adjusting = false;
     lastY = content.scrollTop;
   }
 
   content.addEventListener(
     'scroll',
     () => {
-      if (rafPending) return;
+      if (adjusting || rafPending) return;
       rafPending = true;
       requestAnimationFrame(() => {
         rafPending = false;
         const y = content.scrollTop;
         const dy = y - lastY;
-        if (y < 36) setChromeHidden(false);
-        else if (dy > 14 && !hidden) setChromeHidden(true);
-        else if (dy < -14 && hidden) setChromeHidden(false);
+        const headerH = header.offsetHeight || 0;
+        if (hidden && (y <= 8 || dy < -14)) setChromeHidden(false);
+        else if (dy > 14 && !hidden && y >= headerH + 24) setChromeHidden(true);
         lastY = content.scrollTop;
       });
     },
