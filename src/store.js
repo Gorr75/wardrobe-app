@@ -1,5 +1,5 @@
 import { emptyBrandSizes, normalizeBrandSizes } from './brands.js';
-import { CITIES, getCity, getStoreByBrand, STORES } from './cities.js';
+import { CITIES, getCity, getStoreByBrand } from './cities.js';
 import { normalizePurchase } from './purchases.js';
 import { normalizeStaff } from './staff.js';
 
@@ -8,8 +8,6 @@ const LEGACY_STORAGE_KEYS = ['maison-journal-v5', 'maison-journal-v4', 'maison-j
 const CITY_KEY = 'maison-journal-city';
 const HOME_TAB_KEY = 'maison-journal-home-tab';
 const VISITED_MENU_KEY = 'maison-journal-show-visited-menu';
-const FIRST_RUN_KEY = 'boutique-journal-first-run-done';
-
 export const DEFAULT_CITY_ID = 'stockholm';
 
 function normalizeVisit(visit) {
@@ -75,64 +73,6 @@ export function emptyData() {
   };
 }
 
-function seedData() {
-  const hermesStockholm = STORES.find((s) => s.id === 'stockholm-hermes');
-  const omegaStockholm = STORES.find((s) => s.id === 'stockholm-omega');
-  const chanelParis = STORES.find((s) => s.id === 'paris-chanel');
-  const now = Date.now();
-
-  return {
-    staff: [
-      normalizeStaff({
-        id: 'staff-1',
-        storeId: hermesStockholm?.id || 'stockholm-hermes',
-        name: 'Linnea Forsberg',
-        role: 'Sales Manager',
-        phone: '+46 70 123 45 67',
-        email: 'linnea.f@example.com',
-        note: 'Silk & leather goods.',
-      }),
-      normalizeStaff({
-        id: 'staff-2',
-        storeId: omegaStockholm?.id || 'stockholm-omega',
-        name: 'Oscar Lindqvist',
-        role: 'Senior Sales Associate',
-        phone: '+46 70 987 65 43',
-        note: 'Speedmaster specialist.',
-      }),
-    ],
-    visits: [
-      normalizeVisit({
-        id: 'visit-1',
-        storeId: hermesStockholm?.id || 'stockholm-hermes',
-        at: now - 2 * 86400000,
-        note: 'Private viewing — autumn silk collection.',
-      }),
-      normalizeVisit({
-        id: 'visit-2',
-        storeId: omegaStockholm?.id || 'stockholm-omega',
-        at: now - 5 * 86400000,
-        note: 'Speedmaster fitting, 19 mm wrist confirmed.',
-      }),
-      normalizeVisit({
-        id: 'visit-3',
-        storeId: chanelParis?.id || 'paris-chanel',
-        at: now - 12 * 86400000,
-        note: 'Classic flap sizes compared.',
-      }),
-    ],
-    storeMeta: {},
-    brandSizes: {
-      Hermès: { shoes: '38', rtw: '38', belt: '85' },
-      Omega: { wrist: '19', case: '41' },
-      Chanel: {},
-    },
-    customStores: [],
-    purchases: [],
-    hiddenStoreIds: [],
-  };
-}
-
 function normalizeDataModel(parsed) {
   if (!parsed || typeof parsed !== 'object') return null;
 
@@ -165,23 +105,6 @@ function normalizeDataModel(parsed) {
       ? parsed.hiddenStoreIds.filter((id) => typeof id === 'string' && id)
       : [],
   };
-}
-
-export function defaultData() {
-  return seedData();
-}
-
-export function isFirstRunPending() {
-  return !hasPersistedData() && localStorage.getItem(FIRST_RUN_KEY) !== '1';
-}
-
-export function markFirstRunComplete() {
-  localStorage.setItem(FIRST_RUN_KEY, '1');
-}
-
-function hasPersistedData() {
-  if (localStorage.getItem(STORAGE_KEY)) return true;
-  return LEGACY_STORAGE_KEYS.some((key) => localStorage.getItem(key));
 }
 
 export function loadSelectedCity() {
@@ -217,10 +140,7 @@ export function loadData() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const normalized = normalizeDataModel(JSON.parse(raw));
-      if (normalized) {
-        markFirstRunComplete();
-        return normalized;
-      }
+      if (normalized) return normalized;
     }
 
     for (const legacyKey of LEGACY_STORAGE_KEYS) {
@@ -229,7 +149,6 @@ export function loadData() {
       const migrated = normalizeDataModel(JSON.parse(legacyRaw));
       if (migrated) {
         saveData(migrated);
-        markFirstRunComplete();
         return migrated;
       }
     }
@@ -237,7 +156,6 @@ export function loadData() {
     /* fall through */
   }
 
-  if (isFirstRunPending()) return emptyData();
   return emptyData();
 }
 
@@ -350,10 +268,6 @@ export function removeBoutiqueFromJournal(data, storeId, { isCustom = false } = 
 
 export function deleteStaff(data, staffId) {
   data.staff = data.staff.filter((member) => member.id !== staffId);
-}
-
-export function resetToSeed() {
-  return seedData();
 }
 
 export function normalizeImportedData(parsed) {

@@ -1,4 +1,4 @@
-import { getStoreInstagramHandle, getStoreInstagramLabel } from './cities.js';
+import { getStoreInstagramHandle, getStoreInstagramLabel, STORES } from './cities.js';
 import { escapeHtml } from './frame.js';
 import { formatInstagramUrl } from './staff.js';
 
@@ -186,6 +186,7 @@ export function mapLegendMarkup() {
     <div class="map-legend">
       <div class="map-legend-items">
         ${Object.entries(BRAND_COLORS)
+          .filter(([brand]) => STORES.some((store) => store.brand === brand))
           .map(
             ([brand, color]) =>
               `<span class="map-legend-item"><span class="map-legend-dot" style="background:${color}"></span>${brand}</span>`,
