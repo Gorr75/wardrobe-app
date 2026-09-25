@@ -478,6 +478,16 @@ textarea {
   margin-top: 10px;
 }
 
+.settings-about .settings-link {
+  display: block;
+  box-sizing: border-box;
+  text-decoration: none;
+}
+
+.settings-about .settings-link:first-child {
+  margin-top: 0;
+}
+
 .seed-catalog-card {
   display: flex;
   flex-direction: column;

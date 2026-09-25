@@ -25,6 +25,8 @@ import {
 import {
   appVersionLabel,
   BACKUP_REMINDER_DAYS,
+  PRIVACY_URL,
+  SUPPORT_URL,
   checkWeeklyAutoBackup,
   dismissBackupReminder,
   exportAllData,
@@ -1841,6 +1843,13 @@ function renderSettingsView() {
             </div>
             <p class="data-hint auto-backup-hint">Weekly and visit modes save a backup file to Files → On My iPhone → Boutique Journal (and may open the share sheet).</p>
           </div>
+        </div>
+      </div>
+      <div class="section settings-section">
+        <div class="section-title">About</div>
+        <div class="card settings-card settings-about">
+          <a class="btn btn-secondary full-width settings-link" id="support-link" href="${escapeHtml(SUPPORT_URL)}" target="_blank" rel="noopener noreferrer">Support</a>
+          <a class="btn btn-secondary full-width settings-link" id="privacy-link" href="${escapeHtml(PRIVACY_URL)}" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
         </div>
       </div>
       <div class="section">

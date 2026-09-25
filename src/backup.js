@@ -9,6 +9,8 @@ const FIRST_USE_KEY = 'maison-journal-first-use';
 
 export const APP_VERSION = '1.0';
 export const APP_BUILD = 3;
+export const SUPPORT_URL = 'https://tableside2.netlify.app/boutique/support.html';
+export const PRIVACY_URL = 'https://tableside2.netlify.app/boutique/privacy.html';
 export const BACKUP_REMINDER_DAYS = 30;
 
 export function appVersionLabel() {
