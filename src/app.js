@@ -1,4 +1,4 @@
-import { ALL_CITIES_MAP, CITIES, getCity, getStoreInstagramLabel, getStoreById, getStoresForFilter, isCustomStore, STORES } from './cities.js';
+import { ALL_CITIES_MAP, CITIES, getCity, getStoreInstagramLabel, getStoreById, getStoresForFilter, isCustomStore } from './cities.js';
 import {
   bindChromeAutoHide,
   brandIconClass,
@@ -25,6 +25,8 @@ import {
 import {
   appVersionLabel,
   BACKUP_REMINDER_DAYS,
+  PRIVACY_URL,
+  SUPPORT_URL,
   checkWeeklyAutoBackup,
   dismissBackupReminder,
   exportAllData,
@@ -61,7 +63,6 @@ import {
   deleteCustomStore,
   deleteStaff,
   DEFAULT_CITY_ID,
-  emptyData,
   geocodeAddress,
   getLastVisitAt,
   getPurchasesForStore,
@@ -69,12 +70,9 @@ import {
   getStoreMeta,
   getVisitedStores,
   getVisitsForStore,
-  isFirstRunPending,
   loadData,
   loadHomeTab,
   loadSelectedCity,
-  markFirstRunComplete,
-  resetToSeed,
   removeBoutiqueFromJournal,
   saveData,
   saveHomeTab,
@@ -323,10 +321,6 @@ async function renderList() {
 
   if (shouldShowBackupReminder()) {
     showBackupReminder();
-  }
-
-  if (isFirstRunPending()) {
-    showFirstRunWelcome();
   }
 }
 
@@ -1498,11 +1492,11 @@ function renderStaffForm(storeId, editStaffId) {
         </div>
         <div class="field">
           <label for="phone">Phone</label>
-          <input id="phone" type="tel" value="${escapeHtml(member?.phone || '')}" placeholder="+46 70 123 45 67" />
+          <input id="phone" type="tel" value="${escapeHtml(member?.phone || '')}" placeholder="Phone number" />
         </div>
         <div class="field">
           <label for="email">Email</label>
-          <input id="email" type="email" value="${escapeHtml(member?.email || '')}" placeholder="name@example.com" />
+          <input id="email" type="email" value="${escapeHtml(member?.email || '')}" placeholder="Email address" />
         </div>
         <div class="field">
           <label for="staff-instagram">Instagram</label>
@@ -1669,67 +1663,6 @@ function confirmAction(title, message, onConfirm, confirmLabel = 'Confirm', erro
   });
 }
 
-function showFirstRunWelcome() {
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
-  overlay.innerHTML = `
-    <div class="modal onboarding-modal" role="dialog" aria-modal="true">
-      <h2>Welcome to Boutique Journal</h2>
-      <p class="modal-text">Your personal luxury boutique journal. Everything stays on this device.</p>
-      <ul class="onboarding-list">
-        <li>Browse ${STORES.length} boutiques across 6 cities</li>
-        <li>Track staff, visits, purchases, and notes</li>
-        <li>Share boutique lists with friends (optional)</li>
-      </ul>
-      <div class="modal-actions">
-        <button class="btn btn-secondary modal-btn" id="first-run-empty" type="button">Start empty</button>
-        <button class="btn btn-primary modal-btn" id="first-run-sample" type="button">Load sample journal</button>
-      </div>
-      <label class="btn btn-secondary full-width import-label first-run-import">
-        Import backup file
-        <input type="file" id="first-run-import" accept=".json,application/json" hidden />
-      </label>
-    </div>`;
-
-  const modal = overlay.querySelector('.modal');
-  const close = () => {
-    overlay.remove();
-    document.body.style.overflow = '';
-  };
-
-  const finish = (data) => {
-    state.data = data;
-    saveData(state.data);
-    markFirstRunComplete();
-    close();
-    render();
-  };
-
-  document.body.style.overflow = 'hidden';
-  document.body.appendChild(overlay);
-  modal.addEventListener('click', (e) => e.stopPropagation());
-
-  overlay.querySelector('#first-run-empty')?.addEventListener('click', () => {
-    finish(emptyData());
-  });
-
-  overlay.querySelector('#first-run-sample')?.addEventListener('click', () => {
-    finish(resetToSeed());
-  });
-
-  overlay.querySelector('#first-run-import')?.addEventListener('change', async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    try {
-      finish(await importAllData(file));
-    } catch (err) {
-      alert('Could not import that backup file.');
-      console.error(err);
-    }
-  });
-}
-
 function showBackupReminder() {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
@@ -1843,11 +1776,11 @@ function renderSettingsView() {
           </div>
         </div>
       </div>
-      <div class="section">
-        <div class="section-title">Sample data</div>
-        <div class="card settings-card">
-          <p class="data-hint">Replace all staff, visits, purchases, custom boutiques, and demo sizes with built-in sample data.</p>
-          <button class="btn btn-delete full-width" id="reset-btn" type="button">Reset sample data</button>
+      <div class="section settings-section">
+        <div class="section-title">About</div>
+        <div class="card settings-card settings-about">
+          <a class="btn btn-secondary full-width settings-link" id="support-link" href="${escapeHtml(SUPPORT_URL)}" target="_blank" rel="noopener noreferrer">Support</a>
+          <a class="btn btn-secondary full-width settings-link" id="privacy-link" href="${escapeHtml(PRIVACY_URL)}" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
         </div>
       </div>
     </main>
@@ -1944,19 +1877,6 @@ function renderSettingsView() {
     );
   });
 
-  app.querySelector('#reset-btn')?.addEventListener('click', () => {
-    confirmAction(
-      'Reset sample data?',
-      'This permanently replaces all staff and visits with the built-in demo data.',
-      async () => {
-        state.data = resetToSeed();
-        saveData(state.data);
-        state.route = { view: 'list' };
-        render();
-      },
-      'Reset',
-    );
-  });
 }
 
 applyStoredTheme();

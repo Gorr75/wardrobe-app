@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Fail the Cloud clone if Info.plist is missing keys that already rejected
 # TestFlight 1.0 (3) — ITC Error 90683 (NSContactsUsageDescription).
+# Also require NSLocationWhenInUseUsageDescription: the map locate button
+# calls navigator.geolocation, and iOS kills the app if that key is absent.
 
 set -euo pipefail
 
@@ -24,6 +26,7 @@ required = [
     "NSCameraUsageDescription",
     "NSPhotoLibraryUsageDescription",
     "NSPhotoLibraryAddUsageDescription",
+    "NSLocationWhenInUseUsageDescription",
     "ITSAppUsesNonExemptEncryption",
     "UIFileSharingEnabled",
 ]
