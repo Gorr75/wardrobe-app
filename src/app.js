@@ -95,14 +95,35 @@ import { hapticLight, isNativeApp } from './native.js';
 const SWIPE_DELETE_WIDTH = 80;
 const SWIPE_VISIT_WIDTH = 80;
 const THEME_KEY = 'boutique-journal-theme';
+const THEME_OPTIONS = [
+  { id: 'v1', title: 'Version 1 – Navy & Gold', hint: 'Default' },
+  { id: 'v2', title: 'Version 2 – Black & Champagne', hint: 'Dark' },
+  { id: 'v3', title: 'Version 3 – Forest & Brass', hint: 'Dark' },
+  { id: 'v4', title: 'Version 4 – Burgundy & Rose Gold', hint: 'Dark' },
+  { id: 'v5', title: 'Version 5 – Ivory & Gold (light)', hint: 'Light' },
+  { id: 'v6', title: 'Version 6 – Slate & Silver', hint: 'Dark' },
+  { id: 'v7', title: 'Version 7 – Midnight & Emerald', hint: 'Dark' },
+  { id: 'v8', title: 'Version 8 – Sand & Espresso (light)', hint: 'Light' },
+];
+const LEGACY_THEMES = { current: 'v1', light: 'v5', midnight: 'v1' };
 
 function getTheme() {
-  return localStorage.getItem(THEME_KEY) || 'current';
+  const stored = localStorage.getItem(THEME_KEY) || 'v1';
+  const id = LEGACY_THEMES[stored] || stored;
+  return THEME_OPTIONS.some((theme) => theme.id === id) ? id : 'v1';
 }
 
 function setTheme(theme) {
-  localStorage.setItem(THEME_KEY, theme);
-  document.documentElement.setAttribute('data-theme', theme);
+  const id = getThemeId(theme);
+  localStorage.setItem(THEME_KEY, id);
+  document.documentElement.setAttribute('data-theme', id);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = getComputedStyle(document.documentElement).getPropertyValue('--theme-meta').trim() || meta.content;
+}
+
+function getThemeId(theme) {
+  const id = LEGACY_THEMES[theme] || theme;
+  return THEME_OPTIONS.some((option) => option.id === id) ? id : 'v1';
 }
 
 function applyStoredTheme() {
@@ -228,10 +249,10 @@ function daysSinceVisit(ts) {
   return Math.max(0, Math.floor((Date.now() - ts) / 86400000));
 }
 
-function stayStatMarkup(ts) {
+function stayStatMarkup(ts, monogram) {
   const days = daysSinceVisit(ts);
   if (days == null) {
-    return `<div class="stay-stat"><span class="stay-stat-num">—</span><span class="stay-stat-label">new</span></div>`;
+    return `<div class="stay-stat stay-stat-mark" aria-label="No visits yet"><span class="stay-stat-num">${escapeHtml(monogram || '·')}</span></div>`;
   }
   return `<div class="stay-stat"><span class="stay-stat-num">${days}</span><span class="stay-stat-label">${days === 1 ? 'day' : 'days'}</span></div>`;
 }
@@ -286,10 +307,14 @@ function homeJournalMarkup(stores) {
     const city = getCity(featured.store.cityId);
     const thumb = meta.image
       ? renderStoreThumb(meta.image, featured.store.brand, 'hero-photo', brandIconClass(featured.store.brand))
-      : `<div class="restaurant-icon hero-photo ${brandIconClass(featured.store.brand)}">${brandInitial(featured.store.brand)}</div>`;
+      : '';
+    const monogram = meta.image
+      ? ''
+      : `<span class="hero-monogram" aria-hidden="true">${escapeHtml(brandInitial(featured.store.brand))}</span>`;
     hero = `
       <button type="button" class="hero-boutique" data-store-id="${escapeHtml(featured.store.id)}">
         ${thumb}
+        ${monogram}
         <span class="hero-copy">
           <span class="hero-kicker">Most visited · ${featured.count} ${featured.count === 1 ? 'visit' : 'visits'}</span>
           <span class="hero-name">${escapeHtml(featured.store.name)}</span>
@@ -584,7 +609,7 @@ function buildListBody({ stores, query, isStaffMode, isMapMode }) {
         <li>
           ${wrapSwipeRow(`
           <div class="restaurant-card" data-store-id="${store.id}">
-            ${stayStatMarkup(lastVisit)}
+            ${stayStatMarkup(lastVisit, brandInitial(store.brand))}
             <div class="info">
               <div class="title">${escapeHtml(store.name)} ${customBadge}</div>
               <div class="subtitle">${escapeHtml(allCities ? cityName : store.address.split(',')[0])}</div>
@@ -1874,9 +1899,7 @@ function renderSettingsView() {
         <div class="section-title">Theme</div>
         <div class="card settings-card">
           <div class="appearance-options">
-            ${appearanceCardMarkup(theme, 'current', 'Current', 'Warm gold dark')}
-            ${appearanceCardMarkup(theme, 'light', 'Light', 'Cream paper')}
-            ${appearanceCardMarkup(theme, 'midnight', 'Midnight', 'Cool night')}
+            ${THEME_OPTIONS.map((option) => appearanceCardMarkup(theme, option.id, option.title, option.hint)).join('')}
           </div>
         </div>
       </div>

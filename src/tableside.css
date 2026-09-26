@@ -2925,15 +2925,35 @@ button.list-hero-stat {
   color: #1a1208;
 }
 
-.appearance-swatch-current span:nth-child(1) { background: #100e0c; }
-.appearance-swatch-current span:nth-child(2) { background: #272220; }
-.appearance-swatch-current span:nth-child(3) { background: #d4a054; }
+.appearance-swatch-v1 span:nth-child(1) { background: #0f131b; }
+.appearance-swatch-v1 span:nth-child(2) { background: #1c2230; }
+.appearance-swatch-v1 span:nth-child(3) { background: #c6a36a; }
 
-.appearance-swatch-light span:nth-child(1) { background: #f7f3ec; }
-.appearance-swatch-light span:nth-child(2) { background: #ffffff; }
-.appearance-swatch-light span:nth-child(3) { background: #b07830; }
+.appearance-swatch-v2 span:nth-child(1) { background: #0a0a0a; }
+.appearance-swatch-v2 span:nth-child(2) { background: #171717; }
+.appearance-swatch-v2 span:nth-child(3) { background: #e4d2a8; }
 
-.appearance-swatch-midnight span:nth-child(1) { background: #0d0f14; }
-.appearance-swatch-midnight span:nth-child(2) { background: #1a1d24; }
-.appearance-swatch-midnight span:nth-child(3) { background: #e0b05c; }
+.appearance-swatch-v3 span:nth-child(1) { background: #101612; }
+.appearance-swatch-v3 span:nth-child(2) { background: #1c2822; }
+.appearance-swatch-v3 span:nth-child(3) { background: #d4b16a; }
+
+.appearance-swatch-v4 span:nth-child(1) { background: #1a1014; }
+.appearance-swatch-v4 span:nth-child(2) { background: #2c1c22; }
+.appearance-swatch-v4 span:nth-child(3) { background: #e7b2a4; }
+
+.appearance-swatch-v5 span:nth-child(1) { background: #f4efe4; }
+.appearance-swatch-v5 span:nth-child(2) { background: #fffdf8; }
+.appearance-swatch-v5 span:nth-child(3) { background: #8a5e28; }
+
+.appearance-swatch-v6 span:nth-child(1) { background: #15191e; }
+.appearance-swatch-v6 span:nth-child(2) { background: #232a32; }
+.appearance-swatch-v6 span:nth-child(3) { background: #d5dde4; }
+
+.appearance-swatch-v7 span:nth-child(1) { background: #070b10; }
+.appearance-swatch-v7 span:nth-child(2) { background: #13202a; }
+.appearance-swatch-v7 span:nth-child(3) { background: #3dbe8c; }
+
+.appearance-swatch-v8 span:nth-child(1) { background: #f3eadc; }
+.appearance-swatch-v8 span:nth-child(2) { background: #fffaf3; }
+.appearance-swatch-v8 span:nth-child(3) { background: #6b3e2e; }
 
