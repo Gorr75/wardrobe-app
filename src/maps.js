@@ -8,7 +8,7 @@ let mapEngine = null;
 let storeMarkers = [];
 let mapGeneration = 0;
 let sheetListener = null;
-let userCoordinate = null;
+let userDot = null;
 let mapkitPromise = null;
 let mapkitUnavailable = false;
 let fallbackWarned = false;
@@ -124,7 +124,7 @@ function sheetInset(container) {
     const top = sheet.getBoundingClientRect().top - app.getBoundingClientRect().top;
     if (Number.isFinite(top)) sheetTop = top;
   }
-  const topPad = Math.round(safeTopPx() + 112);
+  const topPad = Math.round(safeTopPx() + 136);
   const desiredBottom = Math.max(48, Math.round(height - sheetTop + 16));
   const maxBottom = Math.max(48, height - topPad - 80);
   return {
@@ -224,7 +224,7 @@ function teardownEngine() {
   mapInstance = null;
   mapEngine = null;
   storeMarkers = [];
-  userCoordinate = null;
+  userDot = null;
   if (!instance) return;
   try {
     if (engine === 'leaflet') {
@@ -264,7 +264,7 @@ function applyMapPadding(animate) {
     const padding = new window.mapkit.Padding(inset.top, inset.right, inset.bottom, inset.left);
     mapInstance.padding = padding;
     const items = [...storeMarkers];
-    if (userCoordinate) items.push(userCoordinate);
+    if (userDot) items.push(userDot);
     if (!items.length) return;
     try {
       mapInstance.showItems(items, { padding, animate: !!animate });
@@ -493,10 +493,8 @@ function mountLeaflet(container, stores, city, { onOpenStore }) {
 
 function placeUserDot(coordinate) {
   if (!mapInstance || mapEngine !== 'mapkit' || !window.mapkit?.Annotation) return;
-  if (mapInstance.__userDot) {
-    mapInstance.removeAnnotation(mapInstance.__userDot);
-  }
-  const dot = new window.mapkit.Annotation(coordinate, () => {
+  if (userDot) mapInstance.removeAnnotation(userDot);
+  userDot = new window.mapkit.Annotation(coordinate, () => {
     const el = document.createElement('div');
     el.className = 'user-location-dot';
     return el;
@@ -504,8 +502,7 @@ function placeUserDot(coordinate) {
     size: { width: 18, height: 18 },
     anchorOffset: new DOMPoint(0, 0),
   });
-  mapInstance.addAnnotation(dot);
-  mapInstance.__userDot = dot;
+  mapInstance.addAnnotation(userDot);
 }
 
 function locateUser() {
@@ -522,15 +519,7 @@ function locateUser() {
     (pos) => {
       const { latitude: lat, longitude: lng } = pos.coords;
       if (mapEngine === 'mapkit' && window.mapkit) {
-        userCoordinate = new window.mapkit.Coordinate(lat, lng);
-        let showed = false;
-        try {
-          mapInstance.showsUserLocation = true;
-          showed = mapInstance.showsUserLocation === true;
-        } catch (err) {
-          console.warn('MapKit user location annotation unavailable', err);
-        }
-        if (!showed) placeUserDot(userCoordinate);
+        placeUserDot(new window.mapkit.Coordinate(lat, lng));
         applyMapPadding(true);
       } else if (mapEngine === 'leaflet') {
         const points = [[lat, lng], ...storeMarkers.map((marker) => [marker.getLatLng().lat, marker.getLatLng().lng])];
