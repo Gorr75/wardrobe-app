@@ -142,6 +142,9 @@ export function bindStaySheet(app) {
     sheet.classList.toggle('is-full', expanded);
     scroll.style.overflowY = expanded ? 'auto' : 'hidden';
     if (!expanded) scroll.scrollTop = 0;
+    if (animate || !sheet.classList.contains('is-dragging')) {
+      window.dispatchEvent(new CustomEvent('boutique-sheet-top', { detail: { top: clamped } }));
+    }
     return clamped;
   };
 

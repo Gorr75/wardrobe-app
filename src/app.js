@@ -434,7 +434,7 @@ async function renderList() {
     });
   });
 
-  initStoreMap(stores, mapViewCity(), {
+  const mapReady = initStoreMap(stores, mapViewCity(), {
     onOpenStore: (id) => {
       state.route = { view: 'store', id };
       render();
@@ -450,6 +450,7 @@ async function renderList() {
   bindListBodyEvents();
   bindCityFilterEvents();
   bindStaySheet(app);
+  await mapReady;
 
   if (shouldShowBackupReminder()) {
     showBackupReminder();
