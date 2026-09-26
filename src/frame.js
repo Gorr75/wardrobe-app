@@ -90,11 +90,153 @@ export function bindChromeAutoHide(app) {
   );
 }
 
+let sheetSnapName = 'half';
+let sheetAbort = null;
+
+export function unbindStaySheet() {
+  sheetAbort?.abort();
+  sheetAbort = null;
+}
+
+export function bindStaySheet(app) {
+  unbindStaySheet();
+  const sheet = app.querySelector('.stay-sheet');
+  const scroll = app.querySelector('.stay-sheet-scroll');
+  const grab = app.querySelector('.stay-sheet-grab');
+  if (!sheet || !scroll || !grab) return;
+  sheetAbort = new AbortController();
+  const { signal } = sheetAbort;
+
+  const safeTop = () => {
+    const raw = getComputedStyle(document.documentElement).getPropertyValue('--safe-top') || '0';
+    const parsed = parseFloat(raw);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const snapTops = () => {
+    const height = app.clientHeight || window.innerHeight;
+    const grabH = grab.offsetHeight || 68;
+    const tabs = app.querySelector('.home-tabs');
+    const tabsH = (tabs?.offsetHeight || 58) + 18;
+    const full = Math.round(safeTop() + 8);
+    const half = Math.round(height * 0.55);
+    const collapsed = Math.max(half + 24, height - grabH - tabsH);
+    return { full, half, collapsed };
+  };
+
+  const nameForTop = (top, snaps) => {
+    const entries = [
+      ['full', snaps.full],
+      ['half', snaps.half],
+      ['collapsed', snaps.collapsed],
+    ];
+    return entries.reduce((best, entry) => (Math.abs(entry[1] - top) < Math.abs(best[1] - top) ? entry : best))[0];
+  };
+
+  const applyTop = (top, animate) => {
+    const snaps = snapTops();
+    const clamped = Math.min(snaps.collapsed, Math.max(snaps.full, top));
+    sheet.style.transition = animate ? '' : 'none';
+    sheet.style.top = `${clamped}px`;
+    const expanded = nameForTop(clamped, snaps) === 'full';
+    sheet.classList.toggle('is-full', expanded);
+    scroll.style.overflowY = expanded ? 'auto' : 'hidden';
+    if (!expanded) scroll.scrollTop = 0;
+    return clamped;
+  };
+
+  const snaps = snapTops();
+  applyTop(snaps[sheetSnapName] ?? snaps.half, false);
+
+  let dragging = false;
+  let tracking = false;
+  let startY = 0;
+  let startTop = 0;
+  let lastY = 0;
+  let lastT = 0;
+  let velocity = 0;
+
+  const currentTop = () => sheet.getBoundingClientRect().top - app.getBoundingClientRect().top;
+
+  const finish = () => {
+    if (!tracking) return;
+    const wasDragging = dragging;
+    dragging = false;
+    tracking = false;
+    sheet.classList.remove('is-dragging');
+    if (!wasDragging) return;
+    const snapsNow = snapTops();
+    const top = currentTop();
+    const points = [snapsNow.full, snapsNow.half, snapsNow.collapsed];
+    let next;
+    if (velocity > 0.55) {
+      const below = points.filter((point) => point > top + 12);
+      next = velocity > 1.2 ? snapsNow.collapsed : below[0] || snapsNow.collapsed;
+    } else if (velocity < -0.55) {
+      const above = points.filter((point) => point < top - 12);
+      next = velocity < -1.2 ? snapsNow.full : above[above.length - 1] || snapsNow.full;
+    } else {
+      next = points.reduce((best, point) => (Math.abs(point - top) < Math.abs(best - top) ? point : best));
+    }
+    sheetSnapName = nameForTop(next, snapsNow);
+    applyTop(snapsNow[sheetSnapName], true);
+  };
+
+  const onMove = (event) => {
+    if (!tracking) return;
+    const now = performance.now();
+    const dy = event.clientY - lastY;
+    const dt = Math.max(1, now - lastT);
+    velocity = dy / dt;
+    lastY = event.clientY;
+    lastT = now;
+    const delta = event.clientY - startY;
+    if (!dragging) {
+      if (Math.abs(delta) < 6) return;
+      const expanded = sheet.classList.contains('is-full');
+      if (!startOnGrab && expanded && delta < 0) {
+        tracking = false;
+        return;
+      }
+      if (!startOnGrab && expanded && scroll.scrollTop > 2 && delta > 0) {
+        tracking = false;
+        return;
+      }
+      dragging = true;
+      sheet.classList.add('is-dragging');
+    }
+    if (event.cancelable) event.preventDefault();
+    const snapsNow = snapTops();
+    applyTop(Math.min(snapsNow.collapsed, Math.max(snapsNow.full, startTop + (event.clientY - startY))), false);
+  };
+
+  let startOnGrab = false;
+
+  const onDown = (event) => {
+    if (event.button != null && event.button !== 0) return;
+    startOnGrab = !!event.target.closest('.stay-sheet-grab');
+    const expanded = sheet.classList.contains('is-full');
+    if (!startOnGrab && expanded && scroll.scrollTop > 2) return;
+    tracking = true;
+    dragging = false;
+    startY = event.clientY;
+    startTop = currentTop();
+    lastY = event.clientY;
+    lastT = performance.now();
+    velocity = 0;
+  };
+
+  sheet.addEventListener('pointerdown', onDown, { signal });
+  window.addEventListener('pointermove', onMove, { passive: false, signal });
+  window.addEventListener('pointerup', finish, { signal });
+  window.addEventListener('pointercancel', finish, { signal });
+}
+
 export function homeTabsMarkup(homeTab) {
   const tabs = [
     { id: 'stores', label: 'Boutiques', icon: tabIconMarkup('stores') },
-    { id: 'staff', label: 'Staff', icon: tabIconMarkup('staff') },
-    { id: 'map', label: 'Map', icon: tabIconMarkup('map') },
+    { id: 'staff', label: 'Clients', icon: tabIconMarkup('staff') },
+    { id: 'map', label: 'Visits', icon: tabIconMarkup('map') },
   ];
   return `
     <nav class="home-tabs" aria-label="Main">
