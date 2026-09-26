@@ -1,15 +1,15 @@
 import { ALL_CITIES_MAP, CITIES, getCity, getStoreInstagramLabel, getStoreById, getStoresForFilter, isCustomStore } from './cities.js';
+import { actionIconMarkup } from './icons.js';
 import {
-  bindChromeAutoHide,
   bindKeyboardInset,
+  bindStaySheet,
   brandIconClass,
   brandInitial,
   cityFilterMarkup,
   escapeHtml,
-  headerActionsMarkup,
   homeTabsMarkup,
   resetPageScroll,
-  listHeroMarkup,
+  unbindStaySheet,
   visitedStoresMenuMarkup,
 } from './frame.js';
 import {
@@ -21,7 +21,6 @@ import {
   bindStoreNavActions,
   destroyMap,
   initStoreMap,
-  mapLegendMarkup,
   storeNavActionsMarkup,
 } from './maps.js';
 import {
@@ -161,20 +160,6 @@ function showingAllCities() {
   return !state.cityId;
 }
 
-function statsForCity() {
-  const stores = cityStores();
-  const storeIds = new Set(stores.map((s) => s.id));
-  const cityVisits = state.data.visits.filter((v) => storeIds.has(v.storeId));
-  const visitedStores = new Set(cityVisits.map((v) => v.storeId));
-  const cityStaff = state.data.staff.filter((m) => storeIds.has(m.storeId));
-  return {
-    stores: stores.length,
-    visited: visitedStores.size,
-    staff: cityStaff.length,
-    visits: cityVisits.length,
-  };
-}
-
 function matchesSearch(text, query) {
   return !query || text.toLowerCase().includes(query);
 }
@@ -203,6 +188,8 @@ function formatRelativeVisit(ts) {
 
 async function render() {
   resetPageScroll();
+  unbindStaySheet();
+  destroyMap();
   switch (state.route.view) {
     case 'list':
       await renderList();
@@ -236,6 +223,139 @@ async function render() {
   }
 }
 
+function daysSinceVisit(ts) {
+  if (!ts) return null;
+  return Math.max(0, Math.floor((Date.now() - ts) / 86400000));
+}
+
+function stayStatMarkup(ts) {
+  const days = daysSinceVisit(ts);
+  if (days == null) {
+    return `<div class="stay-stat"><span class="stay-stat-num">—</span><span class="stay-stat-label">new</span></div>`;
+  }
+  return `<div class="stay-stat"><span class="stay-stat-num">${days}</span><span class="stay-stat-label">${days === 1 ? 'day' : 'days'}</span></div>`;
+}
+
+function journalYearStats(stores) {
+  const ids = new Set(stores.map((store) => store.id));
+  const buckets = new Map();
+  const bump = (ts, key) => {
+    const year = new Date(ts).getFullYear();
+    if (!Number.isFinite(year)) return;
+    if (!buckets.has(year)) buckets.set(year, { visits: 0, purchases: 0 });
+    buckets.get(year)[key] += 1;
+  };
+  for (const visit of state.data.visits) {
+    if (ids.has(visit.storeId)) bump(visit.at, 'visits');
+  }
+  for (const purchase of state.data.purchases || []) {
+    if (ids.has(purchase.storeId)) bump(purchase.purchasedAt, 'purchases');
+  }
+  return [...buckets.entries()].sort((a, b) => b[0] - a[0]);
+}
+
+function yearRowMarkup(year, visits, purchases) {
+  const visitLabel = visits === 1 ? 'visit' : 'visits';
+  const purchaseLabel = purchases === 1 ? 'purchase' : 'purchases';
+  return `
+    <div class="year-row">
+      <span class="year-num">${year}</span>
+      <span class="year-meta">${visits} ${visitLabel} · ${purchases} ${purchaseLabel}</span>
+    </div>`;
+}
+
+function mostVisitedStore(stores) {
+  let best = null;
+  let count = 0;
+  for (const store of stores) {
+    const visits = state.data.visits.filter((visit) => visit.storeId === store.id).length;
+    if (visits > count) {
+      best = store;
+      count = visits;
+    }
+  }
+  return best ? { store: best, count } : null;
+}
+
+function homeJournalMarkup(stores) {
+  const featured = mostVisitedStore(stores);
+  const years = journalYearStats(stores);
+  let hero = '';
+  if (featured) {
+    const meta = getStoreMeta(state.data, featured.store.id);
+    const city = getCity(featured.store.cityId);
+    const thumb = meta.image
+      ? renderStoreThumb(meta.image, featured.store.brand, 'hero-photo', brandIconClass(featured.store.brand))
+      : `<div class="restaurant-icon hero-photo ${brandIconClass(featured.store.brand)}">${brandInitial(featured.store.brand)}</div>`;
+    hero = `
+      <button type="button" class="hero-boutique" data-store-id="${escapeHtml(featured.store.id)}">
+        ${thumb}
+        <span class="hero-copy">
+          <span class="hero-kicker">Most visited · ${featured.count} ${featured.count === 1 ? 'visit' : 'visits'}</span>
+          <span class="hero-name">${escapeHtml(featured.store.name)}</span>
+          <span class="hero-place">${escapeHtml(city.name)}, ${escapeHtml(city.country)}</span>
+          <span class="hero-link">View boutique</span>
+        </span>
+      </button>`;
+  }
+  const yearHtml = years.map(([year, stats]) => yearRowMarkup(year, stats.visits, stats.purchases)).join('');
+  return `${hero}${yearHtml ? `<div class="year-list">${yearHtml}</div>` : ''}`;
+}
+
+function visitsSheetMarkup(stores, query) {
+  const ids = new Set(stores.map((store) => store.id));
+  const visits = state.data.visits
+    .filter((visit) => ids.has(visit.storeId))
+    .filter((visit) => {
+      const store = findStore(visit.storeId);
+      if (!store) return false;
+      const city = getCity(store.cityId);
+      return matchesSearch(`${store.name} ${store.brand} ${city.name} ${visit.note || ''}`, query);
+    })
+    .sort((a, b) => b.at - a.at);
+
+  if (!visits.length) {
+    return `<div class="empty-state"><div class="icon">✦</div><h2>No visits yet</h2><p>Open a boutique and log a visit.</p></div>`;
+  }
+
+  const groups = new Map();
+  for (const visit of visits) {
+    const year = new Date(visit.at).getFullYear();
+    if (!groups.has(year)) groups.set(year, []);
+    groups.get(year).push(visit);
+  }
+
+  return [...groups.entries()]
+    .sort((a, b) => b[0] - a[0])
+    .map(([year, items]) => {
+      const purchases = (state.data.purchases || []).filter(
+        (purchase) => ids.has(purchase.storeId) && new Date(purchase.purchasedAt).getFullYear() === year,
+      ).length;
+      return `
+        ${yearRowMarkup(year, items.length, purchases)}
+        <ul class="list visit-journal">
+          ${items
+            .map((visit) => {
+              const store = findStore(visit.storeId);
+              const city = getCity(store.cityId);
+              return `
+            <li>
+              <button type="button" class="visit-journal-card" data-store-id="${escapeHtml(store.id)}">
+                ${stayStatMarkup(visit.at)}
+                <span class="info">
+                  <span class="title">${escapeHtml(store.name)}</span>
+                  <span class="subtitle">${escapeHtml(city.name)}</span>
+                  <span class="staff-item note">${escapeHtml(formatVisitDate(visit.at))}${visit.note ? ` · ${escapeHtml(visit.note)}` : ''}</span>
+                </span>
+              </button>
+            </li>`;
+            })
+            .join('')}
+        </ul>`;
+    })
+    .join('');
+}
+
 async function renderList() {
   await checkWeeklyAutoBackup(state.data);
 
@@ -245,36 +365,43 @@ async function renderList() {
   const isStoresMode = state.homeTab === 'stores';
   const query = state.listSearch.toLowerCase().trim();
   const showHeaderStats = getShowVisitedMenu();
-  const stats = showHeaderStats && !isStaffMode && !isMapMode ? statsForCity() : null;
   const visitedMenuStores = showHeaderStats && isStoresMode ? visitedStoresForMenu() : [];
   const listBodyHtml = buildListBody({ stores, query, isStaffMode, isMapMode });
+  const sheetKicker = isStaffMode ? 'My clients' : isMapMode ? 'Visits' : 'My boutiques';
+  const searchPlaceholder = isStaffMode ? 'Search clients…' : isMapMode ? 'Search visits…' : 'Search boutiques…';
 
-  app.className = 'has-home-tabs';
-  app.classList.remove('chrome-hidden');
+  app.className = 'stay-stage has-home-tabs';
   app.innerHTML = `
-    <header class="header header-home">
-      <div class="header-home-top">
-        <h1><span class="app-title-name">Boutique Journal</span></h1>
-        ${headerActionsMarkup({
-          showAdd: isStaffMode || isStoresMode,
-          addLabel: isStaffMode ? 'Add staff' : 'Add boutique',
-          addAria: isStaffMode ? 'Add staff member' : 'Add boutique',
-        })}
-      </div>
-      ${listHeroMarkup(stats)}
-      ${visitedStoresMenuMarkup(visitedMenuStores)}
-    </header>
-    <main class="content ${isMapMode ? 'content-map' : ''}">
+    <div class="stage-map" id="restaurant-map" role="application" aria-label="Boutique map"></div>
+    <p id="map-status" class="map-status map-status-float" hidden></p>
+    <div id="map-loading" class="map-loading map-loading-float">Loading map…</div>
+    <p id="map-empty" class="map-empty" hidden></p>
+    <div class="map-float map-float-start">
+      <button type="button" class="float-btn" id="settings-btn" aria-label="Settings">${actionIconMarkup('settings')}</button>
+    </div>
+    <div class="map-float map-float-end">
       ${
-        !isMapMode
-          ? `
-      <div class="search-box">
-        <input id="search-input" type="search" placeholder="${escapeHtml(isStaffMode ? 'Search staff…' : 'Search boutiques…')}" value="${escapeHtml(state.listSearch)}" enterkeyhint="search" />
-      </div>`
+        isStaffMode || isStoresMode
+          ? `<button type="button" class="float-btn" id="add-btn" aria-label="${escapeHtml(isStaffMode ? 'Add staff member' : 'Add boutique')}">${actionIconMarkup('add')}</button>`
           : ''
       }
-      <div id="list-body">${listBodyHtml}</div>
-    </main>
+      <button type="button" class="float-btn" id="map-locate-btn" aria-label="Locate me" title="Locate me">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path><circle cx="12" cy="12" r="8"></circle></svg>
+      </button>
+    </div>
+    <section class="stay-sheet" aria-label="${escapeHtml(sheetKicker)}">
+      <div class="stay-sheet-grab">
+        <div class="stay-handle" aria-hidden="true"></div>
+        <h1 class="sheet-kicker">${escapeHtml(sheetKicker)}</h1>
+      </div>
+      <div class="stay-sheet-scroll">
+        <div class="search-box">
+          <input id="search-input" type="search" placeholder="${escapeHtml(searchPlaceholder)}" value="${escapeHtml(state.listSearch)}" enterkeyhint="search" />
+        </div>
+        ${visitedStoresMenuMarkup(visitedMenuStores)}
+        <div id="list-body">${listBodyHtml}</div>
+      </div>
+    </section>
     ${homeTabsMarkup(state.homeTab)}
   `;
 
@@ -307,11 +434,12 @@ async function renderList() {
     });
   });
 
-  if (isMapMode) {
-    initStoreMap(stores, mapViewCity());
-  } else {
-    destroyMap();
-  }
+  initStoreMap(stores, mapViewCity(), {
+    onOpenStore: (id) => {
+      state.route = { view: 'store', id };
+      render();
+    },
+  });
 
   const searchInput = app.querySelector('#search-input');
   searchInput?.addEventListener('input', () => {
@@ -321,7 +449,7 @@ async function renderList() {
 
   bindListBodyEvents();
   bindCityFilterEvents();
-  if (!isMapMode) bindChromeAutoHide(app);
+  bindStaySheet(app);
 
   if (shouldShowBackupReminder()) {
     showBackupReminder();
@@ -333,18 +461,7 @@ function buildListBody({ stores, query, isStaffMode, isMapMode }) {
   const allCities = showingAllCities();
 
   if (isMapMode) {
-    return `
-      ${cityFilter}
-      ${mapLegendMarkup()}
-      <div class="map-panel">
-        <p id="map-status" class="map-status" hidden></p>
-        <div id="map-loading" class="map-loading">Loading map…</div>
-        <p id="map-empty" class="map-empty" hidden></p>
-        <div id="restaurant-map" class="restaurant-map" role="application" aria-label="Boutique map"></div>
-        <button type="button" class="map-locate-btn" id="map-locate-btn" aria-label="Locate me" title="Locate me">
-          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path><circle cx="12" cy="12" r="8"></circle></svg>
-        </button>
-      </div>`;
+    return `${cityFilter}${visitsSheetMarkup(stores, query)}`;
   }
 
   if (isStaffMode) {
@@ -450,8 +567,9 @@ function buildListBody({ stores, query, isStaffMode, isMapMode }) {
 
   return `
     ${cityFilter}
+    ${query ? '' : homeJournalMarkup(filtered)}
     <div class="list-section-header">
-      <span class="sort-label list-section-label">Boutiques</span>
+      <span class="sort-label list-section-label">All boutiques</span>
       <span class="list-section-count">${filtered.length}</span>
     </div>
     <ul class="list">
@@ -459,22 +577,18 @@ function buildListBody({ stores, query, isStaffMode, isMapMode }) {
         .map((store) => {
           const lastVisit = getLastVisitAt(state.data.visits, store.id);
           const staffCount = state.data.staff.filter((m) => m.storeId === store.id).length;
-          const meta = getStoreMeta(state.data, store.id);
-          const thumb = meta.image
-            ? renderStoreThumb(meta.image, store.brand, '', brandIconClass(store.brand))
-            : `<div class="restaurant-icon ${brandIconClass(store.brand)}">${brandInitial(store.brand)}</div>`;
           const customBadge = isCustomStore(store) ? `<span class="custom-store-badge">Custom</span>` : '';
+          const cityName = getCity(store.cityId).name;
           return `
         <li>
           ${wrapSwipeRow(`
           <div class="restaurant-card" data-store-id="${store.id}">
-            ${thumb}
+            ${stayStatMarkup(lastVisit)}
             <div class="info">
               <div class="title">${escapeHtml(store.name)} ${customBadge}</div>
-              <div class="subtitle">${escapeHtml(store.brand)} · ${allCities ? escapeHtml(getCity(store.cityId).name) : escapeHtml(store.address.split(',')[0])}</div>
-              <div class="staff-item note">${escapeHtml(formatRelativeVisit(lastVisit))}${staffCount ? ` · ${staffCount} staff` : ''}</div>
+              <div class="subtitle">${escapeHtml(allCities ? cityName : store.address.split(',')[0])}</div>
+              <div class="staff-item note">${escapeHtml(store.brand)}${staffCount ? ` · ${staffCount} staff` : ''}</div>
             </div>
-            <span class="chevron">›</span>
           </div>
           `, { showVisit: true })}
         </li>`;
@@ -607,7 +721,7 @@ function bindCityFilterEvents() {
 
 function refreshListBody() {
   const body = app.querySelector('#list-body');
-  if (!body || state.homeTab === 'map') return;
+  if (!body) return;
   body.innerHTML = buildListBody({
     stores: cityStores(),
     query: state.listSearch.toLowerCase().trim(),
@@ -702,6 +816,13 @@ function bindListBodyEvents() {
     setStaffRoleFilter('');
     refreshListBody();
   });
+
+  app.querySelectorAll('.hero-boutique, .visit-journal-card').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.route = { view: 'store', id: button.dataset.storeId };
+      render();
+    });
+  });
 }
 
 function logVisit(storeId, note) {
@@ -745,25 +866,44 @@ function renderStoreDetail(storeId) {
   const instagramLabel = getStoreInstagramLabel(store);
   const instagramUrl = instagramLabel ? formatInstagramUrl(instagramLabel) : '';
 
-  app.className = '';
+  app.className = 'detail-screen';
   app.innerHTML = `
-    <header class="header">
+    <header class="header detail-header">
       <button class="back-btn" id="back-btn" type="button" aria-label="Back">‹</button>
-      <h1>${escapeHtml(store.name)}</h1>
+      <h1 class="visually-hidden">${escapeHtml(store.name)}</h1>
     </header>
     <main class="content detail-content">
       <div class="detail-hero">
         ${renderStoreThumb(meta.image, store.brand, 'detail-photo', brandIconClass(store.brand))}
-        <h2 class="detail-title">${escapeHtml(store.name)}</h2>
-        <p class="detail-subtitle">${escapeHtml(store.brand)} · ${escapeHtml(getCity(store.cityId).name)}</p>
+      </div>
+      <h2 class="detail-title">${escapeHtml(store.name)}</h2>
+      <p class="detail-subtitle">${escapeHtml(store.brand)} · ${escapeHtml(getCity(store.cityId).name)}</p>
+      <div class="detail-lead">
+        ${stayStatMarkup(lastVisitAt)}
+        <div class="detail-lead-copy">
+          <div class="detail-lead-label">Since last visit</div>
+          <div class="detail-lead-value">${escapeHtml(formatRelativeVisit(lastVisitAt))}</div>
+        </div>
       </div>
 
       <div class="section">
         <div class="section-title">Details</div>
         <div class="card">
-          <div class="address-block">
+          <div class="address-block kv-row">
             <span class="label">Address</span>
             <span class="address-value">${escapeHtml(store.address)}</span>
+          </div>
+          <div class="kv-row">
+            <span class="label">Staff</span>
+            <span class="value">${storeStaff.length}</span>
+          </div>
+          <div class="kv-row">
+            <span class="label">Purchases</span>
+            <span class="value">${storePurchases.length}</span>
+          </div>
+          <div class="kv-row">
+            <span class="label">Visits</span>
+            <span class="value">${storeVisits.length}</span>
           </div>
           ${storeNavActionsMarkup()}
           ${
@@ -778,36 +918,38 @@ function renderStoreDetail(storeId) {
           ${
             meta.note
               ? `
-          <div class="note-block">
+          <div class="note-block kv-row">
             <span class="label">Note</span>
             <p class="restaurant-note">${escapeHtml(meta.note)}</p>
           </div>`
               : `
-          <div class="card-row">
+          <div class="card-row kv-row">
             <span class="label">Note</span>
             <span class="value muted">No note</span>
           </div>`
           }
         </div>
-        <button class="btn btn-primary full-width" id="edit-store-btn" type="button">${isCustomStore(store) ? 'Edit boutique' : 'Edit photo & note'}</button>
-        <button class="btn btn-secondary full-width" id="share-boutique-btn" type="button">Share boutique</button>
+        <button type="button" class="gold-expander" id="detail-more" aria-expanded="false"><span class="gold-expander-label">More</span></button>
+        <div id="detail-fold" hidden>
+          ${
+            hasBrandSizes
+              ? `
+          <div class="section">
+            <div class="section-header-row">
+              <div class="section-title">Sizes</div>
+              <button type="button" class="btn-text" id="edit-brand-sizes">Edit</button>
+            </div>
+            <div class="card">
+              <p class="data-hint size-brand-hint">Same at every ${escapeHtml(store.brand)} boutique</p>
+              <p class="brand-size-summary">${sizeSummary ? escapeHtml(sizeSummary) : '<span class="muted">No sizes yet</span>'}</p>
+            </div>
+          </div>`
+              : ''
+          }
+          <button class="btn btn-primary full-width" id="edit-store-btn" type="button">${isCustomStore(store) ? 'Edit boutique' : 'Edit photo & note'}</button>
+          <button class="btn btn-secondary full-width" id="share-boutique-btn" type="button">Share boutique</button>
+        </div>
       </div>
-
-      ${
-        hasBrandSizes
-          ? `
-      <div class="section">
-        <div class="section-header-row">
-          <div class="section-title">My ${escapeHtml(store.brand)} sizes</div>
-          <button type="button" class="btn-text" id="edit-brand-sizes">Edit</button>
-        </div>
-        <div class="card">
-          <p class="data-hint size-brand-hint">Same at every ${escapeHtml(store.brand)} boutique</p>
-          <p class="brand-size-summary">${sizeSummary ? escapeHtml(sizeSummary) : '<span class="muted">No sizes yet</span>'}</p>
-        </div>
-      </div>`
-          : ''
-      }
 
       <div class="section">
         <div class="section-header-row">
@@ -882,6 +1024,16 @@ function renderStoreDetail(storeId) {
   app.querySelector('#back-btn')?.addEventListener('click', () => {
     state.route = { view: 'list' };
     render();
+  });
+  app.querySelector('#detail-more')?.addEventListener('click', (event) => {
+    const fold = app.querySelector('#detail-fold');
+    const label = event.currentTarget.querySelector('.gold-expander-label');
+    const open = fold?.hasAttribute('hidden');
+    if (!fold || !label) return;
+    if (open) fold.removeAttribute('hidden');
+    else fold.setAttribute('hidden', '');
+    label.textContent = open ? 'Less' : 'More';
+    event.currentTarget.setAttribute('aria-expanded', open ? 'true' : 'false');
   });
   app.querySelector('#edit-store-btn')?.addEventListener('click', () => {
     state.route = { view: 'edit-store', id: storeId };

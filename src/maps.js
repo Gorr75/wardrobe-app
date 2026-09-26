@@ -1,5 +1,5 @@
-import { getStoreInstagramHandle, getStoreInstagramLabel, STORES } from './cities.js';
-import { escapeHtml } from './frame.js';
+import { CITIES, getStoreInstagramHandle, getStoreInstagramLabel, STORES } from './cities.js';
+import { brandInitial, escapeHtml } from './frame.js';
 import { formatInstagramUrl } from './staff.js';
 
 let mapInstance = null;
@@ -73,37 +73,48 @@ export function bindStoreNavActions(container, store) {
   });
 }
 
-function createMapIcon(color) {
+function createStayPin(label, count) {
+  const countHtml = typeof count === 'number' ? `<span class="stay-pin-count">${count}</span>` : '';
   return window.L.divIcon({
-    className: 'map-pin-wrap',
-    html: `<div class="map-pin" style="background:${color}"></div>`,
-    iconSize: [26, 26],
-    iconAnchor: [13, 13],
-    popupAnchor: [0, -16],
+    className: 'stay-pin-wrap',
+    html: `<div class="stay-pin"><span class="stay-pin-mark">${label}</span>${countHtml}</div>`,
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
+    popupAnchor: [0, -20],
   });
+}
+
+function mostCommonBrand(stores) {
+  const counts = new Map();
+  for (const store of stores) counts.set(store.brand, (counts.get(store.brand) || 0) + 1);
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || stores[0]?.brand || '';
 }
 
 export function destroyMap() {
   if (mapInstance) {
+    mapInstance.stop();
     mapInstance.remove();
     mapInstance = null;
     storeMarkers = [];
   }
 }
 
-export function initStoreMap(stores, city) {
+export function initStoreMap(stores, city, { onOpenStore } = {}) {
   if (typeof window.L === 'undefined') return;
   const container = document.getElementById('restaurant-map');
   if (!container) return;
 
   destroyMap();
-  mapInstance = window.L.map(container, { zoomControl: false }).setView(
-    [city.center.lat, city.center.lng],
-    city.zoom,
-  );
-  window.L.control.zoom({ position: 'topright' }).addTo(mapInstance);
-  window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap',
+  mapInstance = window.L.map(container, {
+    zoomControl: false,
+    attributionControl: true,
+    zoomAnimation: false,
+    fadeAnimation: false,
+    markerZoomAnimation: false,
+  }).setView([city.center.lat, city.center.lng], city.zoom);
+  window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap &copy; CARTO',
+    subdomains: 'abcd',
     maxZoom: 19,
   }).addTo(mapInstance);
 
@@ -122,30 +133,81 @@ export function initStoreMap(stores, city) {
 
   if (emptyEl) emptyEl.hidden = true;
 
+  const byCity = new Map();
   for (const store of stores) {
-    const marker = window.L.marker([store.lat, store.lng], {
-      icon: createMapIcon(BRAND_COLORS[store.brand] || '#d4a054'),
+    if (!byCity.has(store.cityId)) byCity.set(store.cityId, []);
+    byCity.get(store.cityId).push(store);
+  }
+  const clusterCities = byCity.size > 1;
+
+  const openButton = (store) =>
+    `<button type="button" class="btn btn-secondary full-width" data-open-store="${escapeHtml(store.id)}">Open</button>`;
+
+  const bindOpen = (popup) => {
+    popup.querySelectorAll('[data-open-store]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onOpenStore?.(button.dataset.openStore);
+      });
     });
-    const popup = document.createElement('div');
-    popup.className = 'map-callout';
-    popup.innerHTML = `
-      <div class="map-callout-name">${escapeHtml(store.name)}</div>
-      <div class="map-callout-address">${escapeHtml(store.address)}</div>
-      <div class="map-callout-status"><span class="map-legend-dot" style="background:${BRAND_COLORS[store.brand]}"></span> ${escapeHtml(store.brand)}</div>
-      ${storeInstagramMarkup(store)}
-      ${storeNavActionsMarkup()}
-    `;
-    bindStoreNavActions(popup, store);
-    marker.bindPopup(popup, {
-      className: 'map-popup',
-      maxWidth: 260,
-    });
-    marker.addTo(mapInstance);
-    storeMarkers.push(marker);
+  };
+
+  if (clusterCities) {
+    for (const [cityId, cityStores] of byCity) {
+      const place = CITIES.find((entry) => entry.id === cityId);
+      if (!place) continue;
+      const brand = mostCommonBrand(cityStores);
+      const marker = window.L.marker([place.center.lat, place.center.lng], {
+        icon: createStayPin(escapeHtml(brandInitial(brand)), cityStores.length),
+      });
+      const popup = document.createElement('div');
+      popup.className = 'map-callout';
+      popup.innerHTML = `
+        <div class="map-callout-name">${escapeHtml(place.name)}</div>
+        <div class="map-callout-address">${cityStores.length} boutiques</div>
+        ${cityStores
+          .map(
+            (store) => `
+          <button type="button" class="map-city-store" data-open-store="${escapeHtml(store.id)}">${escapeHtml(store.name)}</button>`,
+          )
+          .join('')}
+      `;
+      bindOpen(popup);
+      marker.bindPopup(popup, { className: 'map-popup', maxWidth: 260 });
+      marker.addTo(mapInstance);
+      storeMarkers.push(marker);
+    }
+  } else {
+    for (const store of stores) {
+      const marker = window.L.marker([store.lat, store.lng], {
+        icon: createStayPin(escapeHtml(brandInitial(store.brand))),
+      });
+      const popup = document.createElement('div');
+      popup.className = 'map-callout';
+      popup.innerHTML = `
+        <div class="map-callout-name">${escapeHtml(store.name)}</div>
+        <div class="map-callout-address">${escapeHtml(store.address)}</div>
+        <div class="map-callout-status"><span class="map-legend-dot" style="background:${BRAND_COLORS[store.brand] || '#d4a054'}"></span> ${escapeHtml(store.brand)}</div>
+        ${storeInstagramMarkup(store)}
+        ${openButton(store)}
+        ${storeNavActionsMarkup()}
+      `;
+      bindStoreNavActions(popup, store);
+      bindOpen(popup);
+      marker.bindPopup(popup, { className: 'map-popup', maxWidth: 260 });
+      marker.addTo(mapInstance);
+      storeMarkers.push(marker);
+    }
   }
 
   if (storeMarkers.length) {
-    mapInstance.fitBounds(window.L.featureGroup(storeMarkers).getBounds().pad(0.15));
+    mapInstance.invalidateSize();
+    const height = mapInstance.getSize().y || container.clientHeight || 800;
+    mapInstance.fitBounds(window.L.featureGroup(storeMarkers).getBounds().pad(0.2), {
+      paddingTopLeft: [28, 96],
+      paddingBottomRight: [28, Math.round(height * 0.48)],
+    });
   }
 
   document.getElementById('map-locate-btn')?.addEventListener('click', () => locateUser(stores));
