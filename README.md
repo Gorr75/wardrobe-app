@@ -1,6 +1,6 @@
 # Boutique Journal
 
-A multi-city luxury boutique clienteling journal. Full-screen map with a Tableside-style bottom sheet — scroll to hide the header, browse boutiques, staff, and visits across **Stockholm**, **Copenhagen**, **London**, **Paris**, **Dubai**, and **Oslo**.
+A personal boutique journal. Full-screen map with a Tableside-style bottom sheet — scroll to hide the header, and remember the boutiques, staff, and visits across **Stockholm**, **Copenhagen**, **London**, **Paris**, **Dubai**, and **Oslo**.
 
 Live demo: [https://gorr75.github.io/wardrobe-app/](https://gorr75.github.io/wardrobe-app/)
 

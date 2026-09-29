@@ -1,3 +1,4 @@
+import { localeTag, t } from './i18n.js';
 import { isNativeApp } from './native.js';
 import { normalizeImportedData } from './store.js';
 
@@ -24,7 +25,7 @@ function todayDateString() {
 }
 
 export function formatBackupDate(ts) {
-  return new Date(ts).toLocaleDateString(undefined, {
+  return new Date(ts).toLocaleDateString(localeTag(), {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -35,8 +36,8 @@ export function formatBackupDate(ts) {
 export function getLastExportLabel() {
   const lastExport = parseInt(localStorage.getItem(LAST_EXPORT_KEY) || '0', 10);
   return lastExport
-    ? `Last backup: ${formatBackupDate(lastExport)}`
-    : 'No backup exported yet';
+    ? t('Last backup: {date}', { date: formatBackupDate(lastExport) })
+    : t('No backup exported yet');
 }
 
 export function getAutoBackupMode() {
@@ -88,7 +89,7 @@ export async function exportAllData(data, { silent = false, auto = false } = {})
     }
   } catch (err) {
     console.error(err);
-    if (!silent) alert('Could not save the backup. Please try again.');
+    if (!silent) alert(t('Could not save the backup. Please try again.'));
     throw err;
   }
 
@@ -100,15 +101,15 @@ export async function exportAllData(data, { silent = false, auto = false } = {})
     if (auto) {
       alert(
         isNativeApp()
-          ? 'Automatic backup saved to Files → On My iPhone → Boutique Journal.'
-          : 'Automatic backup saved to your downloads folder.',
+          ? t('Automatic backup saved to Files → On My iPhone → Boutique Journal.')
+          : t('Automatic backup saved to your downloads folder.'),
       );
     }
   } else {
     alert(
       isNativeApp()
-        ? `Backup saved. Use Save to Files in the share sheet (iCloud Drive), or find it in Files → On My iPhone → Boutique Journal.\n\n${fileName}`
-        : `Backup saved.\n\n${fileName}`,
+        ? `${t('Backup saved. Use Save to Files in the share sheet (iCloud Drive), or find it in Files → On My iPhone → Boutique Journal.')}\n\n${fileName}`
+        : `${t('Backup saved.')}\n\n${fileName}`,
     );
   }
 }

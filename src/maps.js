@@ -1,6 +1,7 @@
 import { CITIES, getStoreInstagramHandle, getStoreInstagramLabel, STORES } from './cities.js';
 import { MAPKIT_JWT } from './config/mapkit.js';
 import { brandInitial, escapeHtml } from './frame.js';
+import { t } from './i18n.js';
 import { formatInstagramUrl } from './staff.js';
 
 let mapInstance = null;
@@ -60,8 +61,8 @@ export function openUber(store) {
 export function storeNavActionsMarkup() {
   return `
     <div class="store-nav-actions">
-      <button type="button" class="btn btn-primary full-width map-apple-btn">Apple Maps</button>
-      <button type="button" class="btn btn-secondary full-width map-uber-btn uber-btn">Uber</button>
+      <button type="button" class="btn btn-primary full-width map-apple-btn">${t('Apple Maps')}</button>
+      <button type="button" class="btn btn-secondary full-width map-uber-btn uber-btn">${t('Uber')}</button>
     </div>`;
 }
 
@@ -146,7 +147,7 @@ function bindOpen(root, onOpenStore) {
 }
 
 function openButton(store) {
-  return `<button type="button" class="btn btn-secondary full-width" data-open-store="${escapeHtml(store.id)}">Open</button>`;
+  return `<button type="button" class="btn btn-secondary full-width" data-open-store="${escapeHtml(store.id)}">${t('Open')}</button>`;
 }
 
 function cityCallout(place, cityStores, onOpenStore) {
@@ -154,7 +155,7 @@ function cityCallout(place, cityStores, onOpenStore) {
   popup.className = 'map-callout';
   popup.innerHTML = `
     <div class="map-callout-name">${escapeHtml(place.name)}</div>
-    <div class="map-callout-address">${cityStores.length} boutiques</div>
+    <div class="map-callout-address">${escapeHtml(t(cityStores.length === 1 ? '{count} boutique' : '{count} boutiques', { count: cityStores.length }))}</div>
     ${cityStores
       .map(
         (store) => `
@@ -401,7 +402,7 @@ function mountMapKit(container, stores, city, { onOpenStore }) {
   };
 
   if (!stores.length) {
-    hideMapChrome('No boutiques in this city.');
+    hideMapChrome(t('No boutiques in this city.'));
     bindLocate();
     return;
   }
@@ -449,7 +450,7 @@ function mountLeaflet(container, stores, city, { onOpenStore }) {
   }).addTo(mapInstance);
 
   if (!stores.length) {
-    hideMapChrome('No boutiques in this city.');
+    hideMapChrome(t('No boutiques in this city.'));
     setTimeout(() => mapInstance?.invalidateSize(), 100);
     bindLocate();
     return;
@@ -530,7 +531,7 @@ function locateUser() {
     },
     () => {
       if (statusEl) {
-        statusEl.textContent = 'Location unavailable';
+        statusEl.textContent = t('Location unavailable');
         statusEl.dataset.tone = 'warn';
         statusEl.hidden = false;
       }

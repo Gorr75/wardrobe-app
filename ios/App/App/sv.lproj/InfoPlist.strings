@@ -1,0 +1,6 @@
+"CFBundleDisplayName" = "Boutique Journal";
+"NSCameraUsageDescription" = "Boutique Journal använder kameran för att fotografera personal, köp och butiker.";
+"NSContactsUsageDescription" = "Boutique Journal importerar en kontakt för att fylla i namn, telefon och e-post för personal.";
+"NSLocationWhenInUseUsageDescription" = "Boutique Journal använder din plats för att centrera kartan på dig och butikerna du besöker.";
+"NSPhotoLibraryAddUsageDescription" = "Boutique Journal kan spara foton du bifogar till personal, köp och butiker.";
+"NSPhotoLibraryUsageDescription" = "Boutique Journal använder ditt bildbibliotek för att bifoga foton av personal, köp och butiker.";
