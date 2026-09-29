@@ -1,0 +1,6 @@
+"CFBundleDisplayName" = "Boutique Journal";
+"NSCameraUsageDescription" = "Boutique Journal uses the camera to photograph staff, purchases, and boutiques.";
+"NSContactsUsageDescription" = "Boutique Journal imports a contact to fill in staff name, phone, and email.";
+"NSLocationWhenInUseUsageDescription" = "Boutique Journal uses your location to center the map on you and the boutiques you are visiting.";
+"NSPhotoLibraryAddUsageDescription" = "Boutique Journal can save photos you attach to staff, purchases, and boutiques.";
+"NSPhotoLibraryUsageDescription" = "Boutique Journal uses your photo library to attach photos of staff, purchases, and boutiques.";

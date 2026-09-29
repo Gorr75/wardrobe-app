@@ -1,4 +1,5 @@
 import { actionIconMarkup, tabIconMarkup } from './icons.js';
+import { countryName, t } from './i18n.js';
 
 export function escapeHtml(text) {
   const div = document.createElement('div');
@@ -237,12 +238,12 @@ export function bindStaySheet(app) {
 
 export function homeTabsMarkup(homeTab) {
   const tabs = [
-    { id: 'stores', label: 'Boutiques', icon: tabIconMarkup('stores') },
-    { id: 'staff', label: 'Clients', icon: tabIconMarkup('staff') },
-    { id: 'map', label: 'Visits', icon: tabIconMarkup('map') },
+    { id: 'stores', label: t('Boutiques'), icon: tabIconMarkup('stores') },
+    { id: 'staff', label: t('Staff'), icon: tabIconMarkup('staff') },
+    { id: 'map', label: t('Visits'), icon: tabIconMarkup('map') },
   ];
   return `
-    <nav class="home-tabs" aria-label="Main">
+    <nav class="home-tabs" aria-label="${escapeHtml(t('Main'))}">
       ${tabs
         .map(
           (tab) => `
@@ -259,7 +260,7 @@ export function homeTabsMarkup(homeTab) {
 export function visitedStoresMenuMarkup(stores) {
   if (!stores.length) return '';
   return `
-    <div class="visited-stores-menu" aria-label="Visited boutiques">
+    <div class="visited-stores-menu" aria-label="${escapeHtml(t('Visited boutiques'))}">
       <div class="visited-stores-scroll">
         ${stores
           .map(
@@ -278,19 +279,19 @@ export function listHeroMarkup(stats) {
       <div class="list-hero-inner list-hero-inner-4">
         <div class="list-hero-stat">
           <span class="list-hero-value">${stats.visited}</span>
-          <span class="list-hero-unit">Visited</span>
+          <span class="list-hero-unit">${t('Visited')}</span>
         </div>
         <div class="list-hero-stat">
           <span class="list-hero-value">${stats.staff}</span>
-          <span class="list-hero-unit">Staff</span>
+          <span class="list-hero-unit">${t('Staff')}</span>
         </div>
         <div class="list-hero-stat">
           <span class="list-hero-value">${stats.visits}</span>
-          <span class="list-hero-unit">Visits</span>
+          <span class="list-hero-unit">${t('Visits')}</span>
         </div>
         <div class="list-hero-stat">
           <span class="list-hero-value">${stats.stores}</span>
-          <span class="list-hero-unit">Boutiques</span>
+          <span class="list-hero-unit">${t('Boutiques')}</span>
         </div>
       </div>
     </div>`;
@@ -299,10 +300,10 @@ export function listHeroMarkup(stats) {
 export function headerActionsMarkup({ showAdd, addLabel, addAria }) {
   return `
     <div class="header-actions">
-      <button type="button" class="header-action" id="settings-btn" aria-label="Settings">
+      <button type="button" class="header-action" id="settings-btn" aria-label="${escapeHtml(t('Settings'))}">
         <span class="header-action-indicator" aria-hidden="true"></span>
         <span class="tab-icon-svg" aria-hidden="true">${actionIconMarkup('settings')}</span>
-        <span class="header-action-label">Settings</span>
+        <span class="header-action-label">${t('Settings')}</span>
       </button>
       ${
         showAdd
@@ -320,17 +321,17 @@ export function headerActionsMarkup({ showAdd, addLabel, addAria }) {
 export function cityFilterMarkup(cities, selectedCityId) {
   return `
     <div class="city-filter-row">
-      <label class="sort-label" for="city-filter">City</label>
-      <select id="city-filter" class="city-filter-select" aria-label="Filter by city">
-        <option value="" ${selectedCityId === '' ? 'selected' : ''}>All cities</option>
+      <label class="sort-label" for="city-filter">${t('City')}</label>
+      <select id="city-filter" class="city-filter-select" aria-label="${escapeHtml(t('Filter by city'))}">
+        <option value="" ${selectedCityId === '' ? 'selected' : ''}>${t('All cities')}</option>
         ${cities
           .map(
             (city) =>
-              `<option value="${city.id}" ${selectedCityId === city.id ? 'selected' : ''}>${escapeHtml(city.name)}, ${escapeHtml(city.country)}</option>`,
+              `<option value="${city.id}" ${selectedCityId === city.id ? 'selected' : ''}>${escapeHtml(city.name)}, ${escapeHtml(countryName(city.country))}</option>`,
           )
           .join('')}
       </select>
-      ${selectedCityId ? `<button type="button" class="btn-text tag-clear-btn" id="clear-city-filter">All cities</button>` : ''}
+      ${selectedCityId ? `<button type="button" class="btn-text tag-clear-btn" id="clear-city-filter">${t('All cities')}</button>` : ''}
     </div>`;
 }
 

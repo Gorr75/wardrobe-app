@@ -1,14 +1,39 @@
-import { imageTagMarkup } from './photos.js';
 import { escapeHtml } from './frame.js';
+import { t } from './i18n.js';
+import { imageTagMarkup } from './photos.js';
 
 export const ROLE_PRESETS = [
   'Sales Associate',
   'Senior Sales Associate',
-  'Client Advisor',
+  'Sales Advisor',
   'Sales Manager',
   'Boutique Director',
   'Other',
 ];
+
+const LEGACY_ROLES = {
+  'Client Advisor': 'Sales Advisor',
+};
+
+export function canonicalRole(role) {
+  return LEGACY_ROLES[role] || role || '';
+}
+
+export function roleLabel(role) {
+  const canonical = canonicalRole(role);
+  if (ROLE_PRESETS.includes(canonical) && canonical !== 'Other') return t(canonical);
+  return role || '';
+}
+
+export function roleFromLabel(label) {
+  const trimmed = (label || '').trim();
+  if (LEGACY_ROLES[trimmed]) return LEGACY_ROLES[trimmed];
+  for (const preset of ROLE_PRESETS) {
+    if (preset === 'Other') continue;
+    if (trimmed === preset || trimmed === t(preset)) return preset;
+  }
+  return trimmed;
+}
 
 const STAFF_SORT_KEY = 'maison-journal-staff-sort';
 const STAFF_ROLE_FILTER_KEY = 'maison-journal-staff-role-filter';
@@ -124,6 +149,7 @@ export function getStaffBrowseEntries(staff, stores, { query = '', cityId = '', 
       (member) =>
         member.name.toLowerCase().includes(q) ||
         member.role.toLowerCase().includes(q) ||
+        roleLabel(member.role).toLowerCase().includes(q) ||
         (member.note || '').toLowerCase().includes(q) ||
         (member.phone || '').toLowerCase().includes(q) ||
         (member.email || '').toLowerCase().includes(q) ||
@@ -144,10 +170,10 @@ export function renderStaffCard(member) {
       <div class="contact-body">
         <div class="contact-header">
           <span class="contact-name">${escapeHtml(member.name)}</span>
-          <span class="role-badge ${getRoleBadgeClass(member.role)}">${escapeHtml(member.role)}</span>
+          <span class="role-badge ${getRoleBadgeClass(member.role)}">${escapeHtml(roleLabel(member.role))}</span>
           ${
             phone
-              ? `<a class="call-btn" href="tel:${formatPhoneLink(phone)}" aria-label="Call" title="Call">📞</a>`
+              ? `<a class="call-btn" href="tel:${formatPhoneLink(phone)}" aria-label="${escapeHtml(t('Call'))}" title="${escapeHtml(t('Call'))}">📞</a>`
               : ''
           }
         </div>
@@ -160,7 +186,7 @@ export function renderStaffCard(member) {
         }
         ${member.note ? `<p class="contact-note">${escapeHtml(member.note)}</p>` : ''}
         <div class="contact-actions">
-          <button class="btn-text edit-staff-btn" type="button" data-id="${member.id}">Edit</button>
+          <button class="btn-text edit-staff-btn" type="button" data-id="${member.id}">${t('Edit')}</button>
         </div>
       </div>
     </div>`;

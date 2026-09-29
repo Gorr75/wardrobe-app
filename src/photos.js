@@ -1,4 +1,5 @@
 import { escapeHtml } from './frame.js';
+import { t } from './i18n.js';
 
 export async function processImageFile(file) {
   const dataUrl = await new Promise((resolve, reject) => {
@@ -68,15 +69,15 @@ export function photoPickerMarkup({ previewImage, placeholder, placeholderClass 
       <div class="photo-actions">
         <div class="photo-action-row">
           <label class="btn btn-secondary photo-choose-btn">
-            Take photo
+            ${t('Take photo')}
             <input type="file" id="photo-input-camera" accept="image/*" capture="environment" hidden />
           </label>
           <label class="btn btn-secondary photo-choose-btn">
-            Choose from library
+            ${t('Choose from library')}
             <input type="file" id="photo-input-library" accept="image/*" hidden />
           </label>
         </div>
-        <button type="button" class="btn-text danger" id="remove-photo" ${previewImage ? '' : 'hidden'}>Remove</button>
+        <button type="button" class="btn-text danger" id="remove-photo" ${previewImage ? '' : 'hidden'}>${t('Remove')}</button>
       </div>
       <p class="field-error" id="photo-error" hidden></p>
     </div>`;
@@ -116,7 +117,7 @@ export function bindPhotoPicker(container, { initialImage = '', placeholder = 'A
       imageRemoved = false;
       updatePreview(imageData);
     } catch {
-      setPhotoError('Could not load that photo.');
+      setPhotoError(t('Could not load that photo.'));
     }
     if (input) input.value = '';
   }

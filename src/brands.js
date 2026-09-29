@@ -1,3 +1,5 @@
+import { t } from './i18n.js';
+
 export const BRANDS = [
   'Hermès',
   'Omega',
@@ -74,8 +76,8 @@ export function getBrandSizeSummary(sizes, brand) {
   const filled = fields
     .filter((field) => values[field.key])
     .map((field) => {
-      const unit = field.unit ? ` ${field.unit}` : '';
-      return `${field.label} ${values[field.key]}${unit}`;
+      const unit = field.unit ? ` ${['EU', 'FR', 'US', 'cm', 'mm', 'Hermès'].includes(field.unit) ? field.unit : t(field.unit)}` : '';
+      return `${t(field.label)} ${values[field.key]}${unit}`;
     });
   return filled.join(' · ');
 }

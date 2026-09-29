@@ -2,7 +2,7 @@
   "name": "wardrobe-app",
   "private": true,
   "version": "2.0.0",
-  "description": "Luxury boutique clienteling journal",
+  "description": "Personal boutique journal for the staff you meet in stores",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^8.0.0",
+    "playwright": "^1.63.0",
     "vite": "^6.2.0"
   }
 }
