@@ -1,5 +1,6 @@
-import { escapeHtml } from './frame.js';
+import { brandIconClass, brandInitial, escapeHtml } from './frame.js';
 import { t } from './i18n.js';
+import { getCatalogPhoto } from './photos/catalog.js';
 
 export async function processImageFile(file) {
   const dataUrl = await new Promise((resolve, reject) => {
@@ -50,10 +51,56 @@ export function renderStoreThumb(image, brand, sizeClass = '', iconClass = '') {
   return `<div class="restaurant-icon ${iconClass} ${sizeClass}">${brandInitial(brand)}</div>`;
 }
 
-function brandInitial(brand) {
-  if (brand === 'Hermès') return 'H';
-  if (brand === 'Omega') return 'Ω';
-  return 'C';
+export function renderPlaceholderHero(store) {
+  return `
+    <div class="detail-hero-mark ${brandIconClass(store.brand)}">
+      <span class="detail-monogram" aria-hidden="true">${escapeHtml(brandInitial(store.brand))}</span>
+      <span class="detail-brand-caption">${escapeHtml(store.brand)}</span>
+    </div>`;
+}
+
+function catalogCreditMarkup(photo) {
+  const text = t('Photo: {credit}', { credit: `${photo.author}, ${photo.license}` });
+  return `<a class="photo-credit" href="${escapeHtml(photo.sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(text)}</a>`;
+}
+
+export function renderBoutiqueHero(store, userImage) {
+  if (userImage) {
+    return {
+      kind: 'user',
+      html: `<img class="detail-hero-photo" src="${escapeHtml(userImage)}" alt="" />`,
+    };
+  }
+  const catalog = getCatalogPhoto(store.id);
+  if (catalog) {
+    return {
+      kind: 'catalog',
+      html: `<img class="detail-hero-photo" src="${escapeHtml(catalog.src)}" alt="" />${catalogCreditMarkup(catalog)}`,
+    };
+  }
+  return { kind: 'placeholder', html: renderPlaceholderHero(store) };
+}
+
+export function renderGoogleHero(photo) {
+  const credits = (photo?.attributions || [])
+    .map((attr) => {
+      const name = (attr.displayName || '').trim();
+      if (!name) return '';
+      if (attr.uri) {
+        return `<a href="${escapeHtml(attr.uri)}" target="_blank" rel="noopener noreferrer">${escapeHtml(name)}</a>`;
+      }
+      return escapeHtml(name);
+    })
+    .filter(Boolean);
+  const credit = credits.length
+    ? `<p class="photo-credit"><span class="photo-credit-kicker">${escapeHtml(t('Photo'))}</span> ${credits.join(', ')}</p>`
+    : '';
+  return `<img class="detail-hero-photo" src="${escapeHtml(photo.src)}" alt="" />${credit}`;
+}
+
+export function heroCreditText(photo) {
+  if (!photo) return '';
+  return t('Photo: {credit}', { credit: `${photo.author}, ${photo.license}` });
 }
 
 export function photoPickerMarkup({ previewImage, placeholder, placeholderClass = '' }) {

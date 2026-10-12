@@ -85,7 +85,7 @@ There is **no** Xcode Cloud workflow on Boutique Journal yet. Create a **new** o
 | Start condition | **Branch Changes** on **`main`** |
 | Primary repository | `Gorr75/wardrobe-app` |
 | Xcode / macOS | Latest stable Xcode 16+ recommended (iOS 15 deployment target) |
-| Environment variables | None required |
+| Environment variables | Optional secret `GOOGLE_PLACES_API_KEY` (see below). Absent means the build skips Google photos. |
 | Actions | **Archive** (Release, generic iOS device) → **Distribution Preparation** → **App Store Connect** |
 | Post-action | **TestFlight Internal Testing** → Internal group **BU Butiksapp** |
 
@@ -98,6 +98,18 @@ This group already exists on Boutique Journal. Do **not** create a group named T
 3. Attach **BU Butiksapp** as the workflow post-action destination
 
 Do not attach Tableside’s Internal group.
+
+### Google Places photos (optional)
+
+Boutique detail pages try a user photo, then a bundled Commons storefront, then Google Places, then the monogram placeholder. `ci_post_clone` reads the secret **`GOOGLE_PLACES_API_KEY`** and stamps `src/config/places-key.js` before Vite. If the secret is missing, that step logs that Google is disabled and the build continues.
+
+The app calls Places API (New) only when a detail opens with no photo. It sends `X-Ios-Bundle-Identifier: se.jansson.boutiquejournal`, caches the place id, and does not store image bytes.
+
+On the Google Cloud key (the same key Tableside uses, or a Boutique key):
+
+1. Restrict the key to iOS apps and add bundle ID **`se.jansson.boutiquejournal`**.
+2. Enable Places API (New).
+3. In App Store Connect → Boutique Journal → Xcode Cloud → workflow **Boutique App Store** → Environment → add secret **`GOOGLE_PLACES_API_KEY`**.
 
 ### Build number floor
 

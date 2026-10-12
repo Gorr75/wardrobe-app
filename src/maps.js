@@ -1,6 +1,7 @@
 import { CITIES, getStoreInstagramHandle, getStoreInstagramLabel, STORES } from './cities.js';
 import { MAPKIT_JWT } from './config/mapkit.js';
 import { brandInitial, escapeHtml } from './frame.js';
+import { actionIconMarkup } from './icons.js';
 import { t } from './i18n.js';
 import { formatInstagramUrl } from './staff.js';
 
@@ -58,11 +59,18 @@ export function openUber(store) {
   openNavigation(uberUrl(store));
 }
 
-export function storeNavActionsMarkup() {
-  return `
+export function storeNavActionsMarkup({ pair = false } = {}) {
+  if (!pair) {
+    return `
     <div class="store-nav-actions">
       <button type="button" class="btn btn-primary full-width map-apple-btn">${t('Apple Maps')}</button>
       <button type="button" class="btn btn-secondary full-width map-uber-btn uber-btn">${t('Uber')}</button>
+    </div>`;
+  }
+  return `
+    <div class="store-nav-actions is-pair">
+      <button type="button" class="btn btn-secondary map-apple-btn"><span class="nav-btn-icon" aria-hidden="true">${actionIconMarkup('map')}</span><span>${t('Apple Maps')}</span></button>
+      <button type="button" class="btn btn-secondary map-uber-btn"><span class="nav-btn-icon" aria-hidden="true">${actionIconMarkup('car')}</span><span>${t('Uber')}</span></button>
     </div>`;
 }
 

@@ -58,9 +58,15 @@ import {
 } from './staff.js';
 import {
   bindPhotoPicker,
+  heroCreditText,
   photoPickerMarkup,
+  renderBoutiqueHero,
+  renderGoogleHero,
+  renderPlaceholderHero,
   renderStoreThumb,
 } from './photos.js';
+import { getCatalogPhoto } from './photos/catalog.js';
+import { forgetPlacePhoto, loadPlacePhoto } from './photos/places.js';
 import { normalizePurchase, renderPurchaseCard } from './purchases.js';
 import {
   createId,
@@ -253,6 +259,18 @@ function daysSinceVisit(ts) {
   return Math.max(0, Math.floor((Date.now() - ts) / 86400000));
 }
 
+function countRow(label, count, action) {
+  const aria =
+    action === 'add-staff' ? t('Add staff') : action === 'add-purchase' ? t('Add') : action === 'focus-visit' ? t('Log visit') : '';
+  const value =
+    count > 0
+      ? `<span class="value">${count}</span>`
+      : action
+        ? `<button type="button" class="value value-action muted" data-count-action="${action}" aria-label="${escapeHtml(aria)}">${t('None yet')}</button>`
+        : `<span class="value muted">${t('None yet')}</span>`;
+  return `<div class="kv-row"><span class="label">${escapeHtml(label)}</span>${value}</div>`;
+}
+
 function stayStatMarkup(ts, monogram) {
   const days = daysSinceVisit(ts);
   if (days == null) {
@@ -309,16 +327,20 @@ function homeJournalMarkup(stores) {
   if (featured) {
     const meta = getStoreMeta(state.data, featured.store.id);
     const city = getCity(featured.store.cityId);
-    const thumb = meta.image
-      ? renderStoreThumb(meta.image, featured.store.brand, 'hero-photo', brandIconClass(featured.store.brand))
+    const catalog = meta.image ? null : getCatalogPhoto(featured.store.id);
+    const photoSrc = meta.image || catalog?.src || '';
+    const thumb = photoSrc
+      ? renderStoreThumb(photoSrc, featured.store.brand, 'hero-photo', brandIconClass(featured.store.brand))
       : '';
-    const monogram = meta.image
+    const monogram = photoSrc
       ? ''
       : `<span class="hero-monogram" aria-hidden="true">${escapeHtml(brandInitial(featured.store.brand))}</span>`;
+    const heroCredit = catalog ? `<span class="hero-credit">${escapeHtml(heroCreditText(catalog))}</span>` : '';
     hero = `
       <button type="button" class="hero-boutique" data-store-id="${escapeHtml(featured.store.id)}">
         ${thumb}
         ${monogram}
+        ${heroCredit}
         <span class="hero-copy">
           <span class="hero-kicker">${escapeHtml(t('Most visited · {count} {unit}', { count: featured.count, unit: featured.count === 1 ? t('visit') : t('visits') }))}</span>
           <span class="hero-name">${escapeHtml(featured.store.name)}</span>
@@ -896,15 +918,18 @@ function renderStoreDetail(storeId) {
   const instagramLabel = getStoreInstagramLabel(store);
   const instagramUrl = instagramLabel ? formatInstagramUrl(instagramLabel) : '';
 
+  const hero = renderBoutiqueHero(store, meta.image);
+  const heroSerial = `${storeId}-${Date.now()}`;
+
   app.className = 'detail-screen';
   app.innerHTML = `
     <header class="header detail-header">
-      <button class="back-btn" id="back-btn" type="button" aria-label="${escapeHtml(t('Back'))}">‹</button>
+      <button class="back-btn" id="back-btn" type="button" aria-label="${escapeHtml(t('Back'))}">${actionIconMarkup('back')}</button>
       <h1 class="visually-hidden">${escapeHtml(store.name)}</h1>
     </header>
     <main class="content detail-content">
-      <div class="detail-hero">
-        ${renderStoreThumb(meta.image, store.brand, 'detail-photo', brandIconClass(store.brand))}
+      <div class="detail-hero${hero.kind === 'placeholder' ? '' : ' has-photo'}" id="detail-hero" data-photo-kind="${hero.kind}" data-hero-serial="${heroSerial}">
+        ${hero.html}
       </div>
       <h2 class="detail-title">${escapeHtml(store.name)}</h2>
       <p class="detail-subtitle">${escapeHtml(store.brand)} · ${escapeHtml(getCity(store.cityId).name)}</p>
@@ -923,24 +948,15 @@ function renderStoreDetail(storeId) {
             <span class="label">${t('Address')}</span>
             <span class="address-value">${escapeHtml(store.address)}</span>
           </div>
-          <div class="kv-row">
-            <span class="label">${t('Staff')}</span>
-            <span class="value">${storeStaff.length}</span>
-          </div>
-          <div class="kv-row">
-            <span class="label">${t('Purchases')}</span>
-            <span class="value">${storePurchases.length}</span>
-          </div>
-          <div class="kv-row">
-            <span class="label">${t('Visits')}</span>
-            <span class="value">${storeVisits.length}</span>
-          </div>
-          ${storeNavActionsMarkup()}
+          ${countRow(t('Staff'), storeStaff.length, storeStaff.length ? '' : 'add-staff')}
+          ${countRow(t('Purchases'), storePurchases.length, storePurchases.length ? '' : 'add-purchase')}
+          ${countRow(t('Visits'), storeVisits.length, storeVisits.length ? '' : 'focus-visit')}
+          ${storeNavActionsMarkup({ pair: true })}
           ${
             instagramLabel
               ? `
-          <a class="link-row link-row-instagram" href="${escapeHtml(instagramUrl)}" target="_blank" rel="noopener noreferrer">
-            <span class="label">${t('Instagram')}</span>
+          <a class="kv-row link-row detail-ig-row" href="${escapeHtml(instagramUrl)}" target="_blank" rel="noopener noreferrer">
+            <span class="label"><span class="ig-mark" aria-hidden="true">${actionIconMarkup('instagram')}</span>${t('Instagram')}</span>
             <span class="link-value">${escapeHtml(instagramLabel)}</span>
           </a>`
               : ''
@@ -1007,7 +1023,7 @@ function renderStoreDetail(storeId) {
         }
       </div>
 
-      <div class="section">
+      <div class="section" id="visit-section">
         <div class="section-title">${t('Last visit')}</div>
         <div class="card visit-card">
           <div class="visit-summary">
@@ -1050,6 +1066,8 @@ function renderStoreDetail(storeId) {
   `;
 
   bindStoreNavActions(app.querySelector('.card'), store);
+  bindCountActions(storeId);
+  if (hero.kind === 'placeholder') loadGoogleHero(store, heroSerial);
 
   app.querySelector('#back-btn')?.addEventListener('click', () => {
     state.route = { view: 'list' };
@@ -1147,6 +1165,39 @@ function renderStoreDetail(storeId) {
     addPastVisit(storeId, dateValue, note);
     await maybeAutoExport(state.data, 'visit');
     renderStoreDetail(storeId);
+  });
+}
+
+function bindCountActions(storeId) {
+  app.querySelector('[data-count-action="add-staff"]')?.addEventListener('click', () => {
+    state.route = { view: 'add-staff', storeId };
+    render();
+  });
+  app.querySelector('[data-count-action="add-purchase"]')?.addEventListener('click', () => {
+    state.route = { view: 'add-purchase', storeId };
+    render();
+  });
+  app.querySelector('[data-count-action="focus-visit"]')?.addEventListener('click', () => {
+    const section = app.querySelector('#visit-section');
+    section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    app.querySelector('#visit-note-input')?.focus();
+  });
+}
+
+function loadGoogleHero(store, serial) {
+  loadPlacePhoto(store).then((photo) => {
+    const heroEl = document.getElementById('detail-hero');
+    if (!heroEl || heroEl.dataset.heroSerial !== serial || !photo?.src) return;
+    heroEl.dataset.photoKind = 'google';
+    heroEl.classList.add('has-photo');
+    heroEl.innerHTML = renderGoogleHero(photo);
+    heroEl.querySelector('img')?.addEventListener('error', () => {
+      forgetPlacePhoto(store.id);
+      if (!heroEl.isConnected) return;
+      heroEl.dataset.photoKind = 'placeholder';
+      heroEl.classList.remove('has-photo');
+      heroEl.innerHTML = renderPlaceholderHero(store);
+    });
   });
 }
 

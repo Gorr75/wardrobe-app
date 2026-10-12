@@ -626,6 +626,27 @@
   border-radius: 0;
 }
 
+.hero-credit {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  right: 10px;
+  left: auto;
+  max-width: 70%;
+  padding: 3px 7px;
+  border-radius: 7px;
+  background: rgba(12, 10, 8, 0.5);
+  color: #f7f3ea;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+  text-align: right;
+  text-transform: none;
+  pointer-events: none;
+}
+
 .hero-copy {
   position: relative;
   z-index: 1;
@@ -838,29 +859,49 @@
   font-weight: 600;
 }
 
+#app.detail-screen {
+  padding-top: 0;
+}
+
 #app.detail-screen .detail-header {
   position: absolute;
-  top: calc(10px + var(--safe-top));
-  left: 12px;
+  top: 0;
+  left: 0;
   right: auto;
   width: auto;
-  z-index: 5;
+  z-index: 6;
   margin: 0;
-  padding: 0;
+  padding: calc(12px + var(--safe-top)) 0 0 16px;
   border: 0;
   background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  pointer-events: none;
 }
 
 #app.detail-screen .back-btn {
-  width: 40px;
-  height: 40px;
+  pointer-events: auto;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: rgba(15, 19, 27, 0.78);
-  color: #f4efe4;
-  font-size: 1.6rem;
-  line-height: 1;
+  background: rgba(16, 14, 12, 0.42);
+  color: #f7f3ea;
+  border: 0.5px solid rgba(255, 255, 255, 0.32);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  font-size: 0;
+  line-height: 0;
+}
+
+#app.detail-screen .back-btn svg {
+  width: 22px;
+  height: 22px;
+  display: block;
 }
 
 #app.detail-screen .content {
@@ -869,41 +910,148 @@
   -webkit-overflow-scrolling: touch;
 }
 
-.detail-hero {
+#app.detail-screen .detail-hero {
   position: relative;
-  height: 236px;
-  margin: 0 -16px 16px;
+  display: block;
+  height: calc(228px + var(--safe-top));
+  min-height: calc(228px + var(--safe-top));
+  margin: 0 -16px 18px;
+  padding: 0;
   overflow: hidden;
-  border-radius: 0 0 20px 20px;
-  background: #1c2230;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: #14110e;
+  text-align: left;
 }
 
-.detail-hero .detail-photo,
-.detail-hero img,
-.detail-hero .restaurant-icon {
+#app.detail-screen .detail-hero.has-photo::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 76px;
+  background: linear-gradient(transparent, rgba(8, 6, 4, 0.62));
+  pointer-events: none;
+}
+
+#app.detail-screen .detail-hero-photo,
+#app.detail-screen .detail-hero img {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: 236px;
+  height: 100%;
   max-width: none;
+  margin: 0;
   object-fit: cover;
+  object-position: center;
+  border: 0;
   border-radius: 0;
-  font-size: 3rem;
+  box-shadow: none;
+  display: block;
+}
+
+#app.detail-screen .detail-hero-mark {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: calc(36px + var(--safe-top)) 24px 28px;
+  background:
+    radial-gradient(90% 80% at 100% 0%, var(--mark-glow, rgba(198, 163, 106, 0.42)), transparent 58%),
+    linear-gradient(165deg, #2c261c 0%, #14110e 64%, #1c1814 100%);
+}
+
+#app.detail-screen .detail-hero-mark.brand-icon-chanel { --mark-glow: rgba(244, 236, 220, 0.4); }
+#app.detail-screen .detail-hero-mark.brand-icon-hermes { --mark-glow: rgba(196, 112, 58, 0.55); }
+#app.detail-screen .detail-hero-mark.brand-icon-omega { --mark-glow: rgba(176, 48, 48, 0.45); }
+#app.detail-screen .detail-hero-mark.brand-icon-cartier { --mark-glow: rgba(176, 48, 48, 0.42); }
+#app.detail-screen .detail-hero-mark.brand-icon-rolex { --mark-glow: rgba(46, 120, 72, 0.5); }
+#app.detail-screen .detail-hero-mark.brand-icon-dior { --mark-glow: rgba(220, 214, 206, 0.35); }
+#app.detail-screen .detail-hero-mark.brand-icon-tiffany { --mark-glow: rgba(80, 190, 196, 0.4); }
+#app.detail-screen .detail-hero-mark.brand-icon-lv { --mark-glow: rgba(184, 132, 42, 0.5); }
+#app.detail-screen .detail-hero-mark.brand-icon-ysl { --mark-glow: rgba(180, 180, 180, 0.28); }
+#app.detail-screen .detail-hero-mark.brand-icon-custom { --mark-glow: rgba(198, 163, 106, 0.4); }
+
+#app.detail-screen .detail-monogram {
+  font-family: "Boutique Serif", Georgia, serif;
+  font-size: clamp(4.2rem, 18vw, 6.6rem);
+  font-weight: 500;
+  line-height: 0.85;
+  color: rgba(247, 239, 224, 0.92);
+  text-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+}
+
+#app.detail-screen .detail-brand-caption {
+  max-width: 90%;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  text-align: center;
+  color: rgba(228, 210, 168, 0.9);
+}
+
+#app.detail-screen .photo-credit {
+  position: absolute;
+  z-index: 2;
+  left: 12px;
+  right: auto;
+  bottom: 10px;
+  max-width: calc(100% - 24px);
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(12, 10, 8, 0.48);
+  color: #f7f3ea;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0;
+  text-transform: none;
+  text-decoration: none;
+  text-align: left;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+#app.detail-screen .photo-credit a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: rgba(228, 210, 168, 0.7);
+  text-underline-offset: 2px;
+}
+
+#app.detail-screen .photo-credit-kicker {
+  letter-spacing: 0.04em;
 }
 
 .detail-title {
   margin: 0;
   font-size: 2rem;
-  line-height: 1.05;
+  line-height: 1.12;
   color: var(--sheet-ink);
+  text-align: left;
+  overflow-wrap: anywhere;
 }
 
-.detail-subtitle {
+#app.detail-screen .detail-subtitle {
   margin: 6px 0 14px;
   font-size: 0.92rem;
+  text-align: left;
 }
 
 .detail-lead {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 8px;
 }
@@ -955,25 +1103,120 @@
 .detail-content .card-row,
 .detail-content .link-row {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  padding: 12px 2px;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  padding: 12px 14px 12px 18px;
   border-bottom: 0.5px solid var(--gold-line);
+}
+
+#app.detail-screen .detail-content .link-row .label,
+#app.detail-screen .detail-content .detail-ig-row .label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--sheet-muted);
+}
+
+#app.detail-screen .detail-ig-row .label::after,
+#app.detail-screen .link-row-instagram .label::after {
+  content: none;
+  display: none;
+}
+
+#app.detail-screen .ig-mark {
+  display: inline-flex;
+  color: var(--gold);
+  flex: none;
+}
+
+#app.detail-screen .ig-mark svg {
+  width: 16px;
+  height: 16px;
+}
+
+#app.detail-screen .value-action {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin-left: auto;
+  font: inherit;
+  color: var(--text-tertiary);
+  text-align: right;
+  text-decoration: underline;
+  text-decoration-color: rgba(198, 163, 106, 0.55);
+  text-underline-offset: 3px;
+}
+
+#app.detail-screen .store-nav-actions.is-pair {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 10px;
+  padding: 14px 14px 14px 18px;
+}
+
+#app.detail-screen .store-nav-actions.is-pair .btn {
+  flex: 1 1 calc(50% - 10px);
+  width: auto;
+  min-width: 0;
+  margin: 0;
+  min-height: 48px;
+  padding: 12px 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: transparent;
+  color: var(--sheet-ink);
+  border: 0.5px solid var(--gold-line);
+  border-radius: 12px;
+  box-shadow: none;
+  white-space: normal;
+  line-height: 1.15;
+}
+
+#app.detail-screen .store-nav-actions.is-pair .nav-btn-icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--gold);
+}
+
+#app.detail-screen .store-nav-actions.is-pair .nav-btn-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+#app.detail-screen .visit-card,
+#app.detail-screen .purchase-list-card,
+#app.detail-screen .empty-card,
+#app.detail-screen .contact-card {
+  padding-left: 18px;
 }
 
 .detail-content .label {
   color: var(--sheet-muted);
   font-size: 0.92rem;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .detail-content .address-value,
 .detail-content .value,
 .detail-content .link-value,
 .detail-content .restaurant-note {
+  flex: 1 1 8rem;
+  min-width: 0;
+  margin: 0 0 0 auto;
   text-align: right;
   color: var(--sheet-ink);
-  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .gold-expander {

@@ -71,7 +71,7 @@ Committed in `ios/App/App/Info.plist`. Local TestFlight **1.0 (3)** failed ITC *
 | Field | Local repo | Xcode Cloud |
 |---|---|---|
 | Marketing / Settings `APP_VERSION` | `1.0` in `src/backup.js` | Left at **1.0** |
-| Settings `APP_BUILD` | `src/backup.js` (currently 3) | Rewritten from `CI_BUILD_NUMBER` |
+| Settings `APP_BUILD` | `src/backup.js` (currently 4) | Rewritten from `CI_BUILD_NUMBER` |
 | Xcode Version | `MARKETING_VERSION` = 1.0 | Left at **1.0** |
 | Xcode Build | `CURRENT_PROJECT_VERSION` (local number may differ) | Rewritten from `CI_BUILD_NUMBER` |
 

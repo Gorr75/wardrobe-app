@@ -1578,19 +1578,31 @@ button.list-hero-stat {
   flex-shrink: 0;
 }
 
-.contact-avatar {
+.contact-avatar,
+.staff-avatar-initials {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: linear-gradient(145deg, #48484a, #3a3a3c);
+  background: linear-gradient(160deg, #3a3228, #17140f);
+  border: 0.5px solid rgba(198, 163, 106, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text);
+  font-family: "Boutique Serif", Georgia, serif;
+  font-size: 0.95rem;
+  font-weight: 560;
+  color: #e4d2a8;
   flex-shrink: 0;
   letter-spacing: 0.02em;
+}
+
+.staff-avatar.contact-photo {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 0.5px solid var(--border-warm);
 }
 
 .contact-body {

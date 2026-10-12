@@ -134,6 +134,9 @@ restore_package_resolved() {
   fi
 }
 
+echo "Google Places key (optional Xcode Cloud secret)"
+"${SCRIPT_DIR}/stamp_places_key.sh" "$ROOT"
+
 echo "Building web assets (required before xcodebuild)"
 export CAPACITOR=1
 npm run build

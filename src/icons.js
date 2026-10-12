@@ -9,6 +9,10 @@ export const TAB_ICONS = {
 export const ACTION_ICONS = {
   settings: `<svg ${SVG_ATTRS}><circle cx="12" cy="12" r="2.75"/><path d="M12 3v2.1M12 18.9V21M3 12h2.1M18.9 12H21M5.6 5.6l1.5 1.5M16.9 16.9l1.5 1.5M5.6 18.4l1.5-1.5M16.9 7.1l1.5-1.5"/></svg>`,
   add: `<svg ${SVG_ATTRS}><path d="M12 5v14M5 12h14"/></svg>`,
+  back: `<svg ${SVG_ATTRS}><path d="M14.5 5.5 8 12l6.5 6.5"/></svg>`,
+  map: `<svg ${SVG_ATTRS}><path d="M12 21s6-5.2 6-10a6 6 0 1 0-12 0c0 4.8 6 10 6 10z"/><circle cx="12" cy="11" r="2.15"/></svg>`,
+  car: `<svg ${SVG_ATTRS}><path d="M4.5 15.5h15"/><path d="M6.4 15.5 7.7 11.2A2 2 0 0 1 9.6 9.8h4.8a2 2 0 0 1 1.9 1.4l1.3 4.3"/><path d="M6 15.5v1.8M18 15.5v1.8"/><circle cx="8" cy="17.2" r="1.15"/><circle cx="16" cy="17.2" r="1.15"/></svg>`,
+  instagram: `<svg ${SVG_ATTRS}><rect x="4.5" y="4.5" width="15" height="15" rx="4"/><circle cx="12" cy="12" r="3.35"/><circle cx="16.7" cy="7.4" r="0.85" fill="currentColor" stroke="none"/></svg>`,
 };
 
 export function tabIconMarkup(id) {

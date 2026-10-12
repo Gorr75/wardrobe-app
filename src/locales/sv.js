@@ -133,6 +133,7 @@ export default {
   'No boutiques in this scope to share.': 'Inga butiker i det här urvalet att dela.',
   'No matches': 'Inga träffar',
   'No note': 'Ingen anteckning',
+  'None yet': 'Inget ännu',
   'No purchases yet — tap Add to log an item with photo':
     'Inga köp ännu — tryck på Lägg till för att logga en vara med foto',
   'No sizes yet': 'Inga storlekar ännu',
@@ -149,6 +150,7 @@ export default {
   'Other': 'Annat',
   'Phone': 'Telefon',
   'Phone number': 'Telefonnummer',
+  'Photo: {credit}': 'Foto: {credit}',
   'Photo': 'Foto',
   'Pick which boutique they work at.': 'Välj vilken butik personen arbetar på.',
   'Price': 'Pris',

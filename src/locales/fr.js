@@ -133,6 +133,7 @@ export default {
   'No boutiques in this scope to share.': 'Aucune boutique à partager dans cette sélection.',
   'No matches': 'Aucun résultat',
   'No note': 'Aucune note',
+  'None yet': 'Pas encore',
   'No purchases yet — tap Add to log an item with photo':
     'Aucun achat pour le moment — touchez Ajouter pour noter un article avec une photo',
   'No sizes yet': 'Aucune taille pour le moment',
@@ -149,6 +150,7 @@ export default {
   'Other': 'Autre',
   'Phone': 'Téléphone',
   'Phone number': 'Numéro de téléphone',
+  'Photo: {credit}': 'Photo : {credit}',
   'Photo': 'Photo',
   'Pick which boutique they work at.': 'Choisissez la boutique où cette personne travaille.',
   'Price': 'Prix',
